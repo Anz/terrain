@@ -17,7 +17,7 @@ function editor_init() {
 	program = load_shader('program/vertex.glsl', 'program/fragment.glsl');
 	
 	// create terrain
-	terrain = createTerrain(20, 20, 20);
+	terrain = createTerrain(100, 3, 100);
 	
 	// setup projection matrix
 	projectionMatrix = mat4.create();
@@ -55,30 +55,35 @@ function update() {
 	gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
 	
 	// depth buffer
-	if (keys[82]) {
-		gl.disable(gl.DEPTH_TEST);
-	} else {
+	if ($('#depthbuffer').attr('checked')) {
 		gl.enable(gl.DEPTH_TEST);
+	} else {
+		gl.disable(gl.DEPTH_TEST);
 	}
 	
 	// render
-	drawMesh(program, terrain, [0.3, 0.3, 0.3, 1.0]);
-	if (!keys[69]) {
-		drawMesh(program, terrain.normalMesh, [1.0, 0.0, 0.0, 1.0]);
+	var useLight = false;
+	if ($('#lightening').attr('checked')) {
+		useLight = true;
+	}
+	
+	drawMesh(program, terrain, [0.3, 0.3, 0.3, 1.0], useLight);
+	if ($('#normals').attr('checked')) {
+		drawMesh(program, terrain.normalMesh, [1.0, 0.0, 0.0, 1.0], useLight);
 	}
 }
 
 var f = 0.0;
 
-function drawMesh(program, mesh, diffuseColor) {
+function drawMesh(program, mesh, diffuseColor, useLight) {
 	if (!program.loaded) {
 		return;
 	}
 	
 	gl.useProgram(program);
 	
-	//f += 0.001;
-	f = Math.PI/4;
+	f += 0.001;
+	//f = Math.PI/4;
 	
 	// view matrix
 	mat4.identity(viewMatrix);
@@ -108,7 +113,7 @@ function drawMesh(program, mesh, diffuseColor) {
 	gl.uniformMatrix3fv(program.uNormalMatrix, false, normalMatrix);
 	gl.uniform4f(program.uDiffuseColor, diffuseColor[0], diffuseColor[1], diffuseColor[2], diffuseColor[3]);
 	gl.uniform3f(program.uAmbientColor, 0.2, 0.2, 0.2);
-	gl.uniform1i(program.uUseLight, !keys[81]);
+	gl.uniform1i(program.uUseLight, useLight);
 
 	// light
 	var lightDirection = vec3.create();
@@ -128,9 +133,18 @@ function drawMesh(program, mesh, diffuseColor) {
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ibo);
 	
 	// draw the buffer
-	gl.drawElements(mesh.type, mesh.numIndices, gl.UNSIGNED_SHORT, 0);
-	//gl.drawElements(gl.POINTS, mesh.num_indices, gl.UNSIGNED_SHORT, 0);
-	//gl.drawElements(gl.LINE_STRIP, mesh.num_indices, gl.UNSIGNED_SHORT, 0);
+	if ($('#faces').attr('checked')) {
+		gl.drawElements(mesh.type, mesh.numIndices, gl.UNSIGNED_SHORT, 0);
+	} 
+	if ($('#wireframe').attr('checked')) {
+		gl.uniform4f(program.uDiffuseColor, 1.0, 1.0, 0.0,1.0);
+		gl.drawElements(gl.LINE_STRIP, mesh.numIndices, gl.UNSIGNED_SHORT, 0);
+	}
+	
+	if ($('#vertices').attr('checked')) {
+		gl.uniform4f(program.uDiffuseColor, 0.0, 1.0, 0.0,1.0);
+		gl.drawElements(gl.POINTS, mesh.numIndices, gl.UNSIGNED_SHORT, 0);
+	}
 }
 
 function createTerrain(width, height, depth) {
@@ -369,6 +383,8 @@ $(document).ready(function() {
 	canvas = document.getElementById('canvas');
 	editor_init();
 	requestAnimationFrame(update);
+	
+	$('#toolbox').style.left = (window.innerWidth - 100) + 'px';
 });
 
 // window resize events
