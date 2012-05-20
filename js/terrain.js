@@ -63,7 +63,7 @@ function update() {
 	
 	// render
 	var useLight = false;
-	if ($('#lightening').attr('checked')) {
+	if ($('#lighting').attr('checked')) {
 		useLight = true;
 	}
 	
@@ -136,12 +136,12 @@ function drawMesh(program, mesh, diffuseColor, useLight) {
 	if ($('#faces').attr('checked')) {
 		gl.drawElements(mesh.type, mesh.numIndices, gl.UNSIGNED_SHORT, 0);
 	} 
-	if ($('#wireframe').attr('checked')) {
+	if (mesh.type != gl.LINES && $('#wireframe').attr('checked')) {
 		gl.uniform4f(program.uDiffuseColor, 1.0, 1.0, 0.0,1.0);
 		gl.drawElements(gl.LINE_STRIP, mesh.numIndices, gl.UNSIGNED_SHORT, 0);
 	}
 	
-	if ($('#vertices').attr('checked')) {
+	if (mesh.type != gl.POINTS && $('#vertices').attr('checked')) {
 		gl.uniform4f(program.uDiffuseColor, 0.0, 1.0, 0.0,1.0);
 		gl.drawElements(gl.POINTS, mesh.numIndices, gl.UNSIGNED_SHORT, 0);
 	}
