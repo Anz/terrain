@@ -13,11 +13,19 @@ function editor_init() {
 	gl.enable(gl.DEPTH_TEST);
 	gl.depthFunc(gl.LESS);
 	
-	// load shader
+	gl.frontFace(gl.CW);
+	gl.enable(gl.CULL_FACE);
+	gl.cullFace(gl.BACK);
+	gl.lineWidth(2.0); 
+	
+	// load shaders
 	program = load_shader('program/vertex.glsl', 'program/fragment.glsl');
 	
+	// load textures
+	diffuse_grass = load_texture('img/grass_diffuse.png');
+	
 	// create terrain
-	terrain = createTerrain(100, 3, 100);
+	terrain = createTerrain(64, 2, 64);
 	
 	// setup projection matrix
 	projectionMatrix = mat4.create();
@@ -30,11 +38,10 @@ function editor_init() {
 	modelMatrix = mat4.create();
 	
 	// camera
-	camera = {x: 0, y: 0, z: 0, zoom: 0.25};
+	camera = {x: 0.0, y: 0.0, z: 3.0, zoom: 0.025};
 	
 	// terrain
-	model = {x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 1, sx: 0.1, sy: 0.1, sz: 0.01};
-	terrain.normalMesh = createNormalMesh(terrain);
+	model = {x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 1, sx: 0.01, sy: 0.01, sz: 0.01};
 	
 	// keyboard
 	keys = new Object();
@@ -68,88 +75,27 @@ function update() {
 	}
 	
 	drawMesh(program, terrain, [0.3, 0.3, 0.3, 1.0], useLight);
-	if ($('#normals').attr('checked')) {
+	if ($('#vertexNormals').attr('checked')) {
+		if (!terrain.normalMesh) {
+			terrain.normalMesh = createNormalMesh(terrain);
+		}
+	
 		drawMesh(program, terrain.normalMesh, [1.0, 0.0, 0.0, 1.0], useLight);
+	}
+	
+	if ($('#faceNormals').attr('checked')) {
+		if (!terrain.faceNormalMesh) {
+			terrain.faceNormalMesh = createFaceNormalMesh(terrain);
+		}
+	
+		drawMesh(program, terrain.faceNormalMesh, [1.0, 0.0, 0.0, 1.0], useLight);
 	}
 }
 
 var f = 0.0;
 
-function drawMesh(program, mesh, diffuseColor, useLight) {
-	if (!program.loaded) {
-		return;
-	}
-	
-	gl.useProgram(program);
-	
-	f += 0.001;
-	//f = Math.PI/4;
-	
-	// view matrix
-	mat4.identity(viewMatrix);
-	mat4.translate(viewMatrix, [-camera.x, -camera.y, camera.z]);
-	mat4.translate(viewMatrix, [0.0, 0.0, -7.0]);
-	mat4.rotate(viewMatrix, f*Math.PI/2, [0, 1, 0]);
-	mat4.scale(viewMatrix, [camera.zoom, camera.zoom, camera.zoom]);
-	
-	// model matrix
-	mat4.identity(modelMatrix);
-	mat4.translate(modelMatrix, [model.x, model.y, model.z]);
-	mat4.rotate(modelMatrix, model.rx, [1, 0, 0]);
-	mat4.rotate(modelMatrix, model.ry, [0, 1, 0]);
-	mat4.rotate(modelMatrix, model.rz, [0, 0, 1]);
-	mat4.scale(modelMatrix, [model.sx, model.sy, model.sz]);
-	
-	// normal matrix
-	var normalMatrix = mat3.create();
-    mat4.toInverseMat3(modelMatrix, normalMatrix);
-    mat3.transpose(normalMatrix);
-	
-	//mat4.multiply(modelMatrix, viewMatrix, viewMatrix);
-	
-	// uniforms
-	gl.uniformMatrix4fv(program.uProjectionMatrix, false, projectionMatrix);
-	gl.uniformMatrix4fv(program.uViewMatrix, false, viewMatrix);
-	gl.uniformMatrix3fv(program.uNormalMatrix, false, normalMatrix);
-	gl.uniform4f(program.uDiffuseColor, diffuseColor[0], diffuseColor[1], diffuseColor[2], diffuseColor[3]);
-	gl.uniform3f(program.uAmbientColor, 0.2, 0.2, 0.2);
-	gl.uniform1i(program.uUseLight, useLight);
-
-	// light
-	var lightDirection = vec3.create();
-	//vec3.normalize([-0.25, -0.25, -1.0], lightDirection);
-	vec3.normalize([-0.4, -0.4, 0.0], lightDirection);
-	//vec3.normalize([-Math.sin(f), -Math.cos(f), -Math.tan(f)], lightDirection);
-	vec3.scale(lightDirection, -1);
-	gl.uniform3fv(program.uLightDirection, lightDirection);
-	gl.uniform3fv(program.uLightColor, [0.8, 0.8, 0.8]);
-
-	// vertices
-	gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vbo);
-	gl.vertexAttribPointer(program.vertexPosition, 3, gl.FLOAT, false, 6*4, 0);
-	gl.vertexAttribPointer(program.aVertexNormal, 3, gl.FLOAT, false, 6*4, 3*4);
-
-	// indices
-	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ibo);
-	
-	// draw the buffer
-	if ($('#faces').attr('checked')) {
-		gl.drawElements(mesh.type, mesh.numIndices, gl.UNSIGNED_SHORT, 0);
-	} 
-	if (mesh.type != gl.LINES && $('#wireframe').attr('checked')) {
-		gl.uniform4f(program.uDiffuseColor, 1.0, 1.0, 0.0,1.0);
-		gl.drawElements(gl.LINE_STRIP, mesh.numIndices, gl.UNSIGNED_SHORT, 0);
-	}
-	
-	if (mesh.type != gl.POINTS && $('#vertices').attr('checked')) {
-		gl.uniform4f(program.uDiffuseColor, 0.0, 1.0, 0.0,1.0);
-		gl.drawElements(gl.POINTS, mesh.numIndices, gl.UNSIGNED_SHORT, 0);
-	}
-}
-
 function createTerrain(width, height, depth) {
-	var mesh = createMesh(gl.TRIANGLES, width*height*depth*6, (2*(width-1)*(height-1)+2*(width-1)*(depth-1)+2*(height-1)*(depth-1))*6); 
-	mesh.face_size = 6;
+	var mesh = createMesh(gl.TRIANGLES, width*height*depth, (2*(width-1)*(height-1)+2*(width-1)*(depth-1)+2*(height-1)*(depth-1))*2); 
 	
 	// vertices
 	var index = 0;
@@ -163,13 +109,16 @@ function createTerrain(width, height, depth) {
 				mesh.vertices[index++] = z - (depth-1)/2;
 				
 				// normal
-				var nx = (x <= 0) ? -1.0 : ((x >= width-1) ? 1.0 : 0.0);
-				var ny = (y <= 0) ? -1.0 : ((y >= height-1) ? 1.0 : 0.0);
-				var nz = (z <= 0) ? -1.0 : ((z >= depth-1) ? 1.0 : 0.0);
-				var factor = 1.0/vec3.length([nx,ny,nz]);
-				mesh.vertices[index++] = nx*factor;
-				mesh.vertices[index++] = ny*factor;
-				mesh.vertices[index++] = nz*factor;
+				var normal = [
+					(x <= 0) ? -1.0 : ((x >= width-1) ? 1.0 : 0.0),
+					(y <= 0) ? -1.0 : ((y >= height-1) ? 1.0 : 0.0),
+					(z <= 0) ? -1.0 : ((z >= depth-1) ? 1.0 : 0.0)
+				];
+				vec3.normalize(normal);
+				
+				mesh.vertices[index++] = normal[0];
+				mesh.vertices[index++] = normal[1];
+				mesh.vertices[index++] = normal[2];
 			}
 		}
 	}
@@ -177,7 +126,7 @@ function createTerrain(width, height, depth) {
 	// indices
 	var index = 0;
 	
-	function mapping_faces(x, y, linex, liney, offset1,  offset2,  offset3,  offset4) {
+	function mapping_faces(x, y, linex, liney, offset1,  offset2,  offset3,  offset4, flip) {
 		function vertex(v) {
 			return v[0] + v[1]*width + v[2]*width*height;
 		}
@@ -198,12 +147,21 @@ function createTerrain(width, height, depth) {
 				vec3.add(cursor, offset3, v3);
 				vec3.add(cursor, offset4, v4);
 				
-				mesh.indices[index++] = vertex(v1);
-				mesh.indices[index++] = vertex(v2);
-				mesh.indices[index++] = vertex(v3);
-				mesh.indices[index++] = vertex(v2);
-				mesh.indices[index++] = vertex(v3);
-				mesh.indices[index++] = vertex(v4);
+				if (!flip) {
+					mesh.indices[index++] = vertex(v1);
+					mesh.indices[index++] = vertex(v2);
+					mesh.indices[index++] = vertex(v3);
+					mesh.indices[index++] = vertex(v2);
+					mesh.indices[index++] = vertex(v4);
+					mesh.indices[index++] = vertex(v3);
+				} else {
+					mesh.indices[index++] = vertex(v1);
+					mesh.indices[index++] = vertex(v3);
+					mesh.indices[index++] = vertex(v2);					
+					mesh.indices[index++] = vertex(v2);
+					mesh.indices[index++] = vertex(v3);
+					mesh.indices[index++] = vertex(v4);							
+				}
 				
 				vec3.add(cursor, x);
 			}
@@ -211,148 +169,24 @@ function createTerrain(width, height, depth) {
 	}
 	
 	// front
-	mapping_faces([1,0,0], [0,1,0], width, height, [0,0,0], [1,0,0], [0,1,0], [1,1,0]);
+	mapping_faces([1,0,0], [0,1,0], width, height, [0,0,0], [1,0,0], [0,1,0], [1,1,0], false);
 	// back
-	mapping_faces([1,0,0], [0,1,0], width, height, [0,0,depth-1], [1,0,depth-1], [0,1,depth-1], [1,1,depth-1]);
+	mapping_faces([1,0,0], [0,1,0], width, height, [0,0,depth-1], [1,0,depth-1], [0,1,depth-1], [1,1,depth-1], true);
 	// left
-	mapping_faces([0,1,0], [0,0,1], height, depth, [0,0,0], [0,1,0], [0,0,1], [0,1,1]);
+	mapping_faces([0,1,0], [0,0,1], height, depth, [0,0,0], [0,1,0], [0,0,1], [0,1,1], false);
 	// right
-	mapping_faces([0,1,0], [0,0,1], height, depth, [width-1,0,0], [width-1,1,0], [width-1,0,1], [width-1,1,1]);
+	mapping_faces([0,1,0], [0,0,1], height, depth, [width-1,0,0], [width-1,1,0], [width-1,0,1], [width-1,1,1], true);
 	// bottom
-	mapping_faces([1,0,0], [0,0,1], width, depth, [0,0,0], [1,0,0], [0,0,1], [1,0,1]);	
+	mapping_faces([1,0,0], [0,0,1], width, depth, [0,0,0], [1,0,0], [0,0,1], [1,0,1], true);	
 	// top
-	mapping_faces([1,0,0], [0,0,1], width, depth, [0,height-1,0], [1,height-1,0], [0,height-1,1], [1,height-1,1]);	
+	mapping_faces([1,0,0], [0,0,1], width, depth, [0,height-1,0], [1,height-1,0], [0,height-1,1], [1,height-1,1], false);	
 	
 	mesh.init();
 	
 	return mesh;
 }
 
-function createNormalMesh(m) {	
-	var mesh = createMesh(gl.LINES, m.vertices.length*2, m.vertices.length/m.vertex_size*2);
-	
-	var index = 0;
-	for (var i = 0; i < m.vertices.length; i += m.vertex_size) {
-		// position
-		mesh.vertices[index++] = m.vertices[i];
-		mesh.vertices[index++] = m.vertices[i+1];
-		mesh.vertices[index++] = m.vertices[i+2];
-		
-		// normals
-		mesh.vertices[index++] = m.vertices[i+3];
-		mesh.vertices[index++] = m.vertices[i+4];
-		mesh.vertices[index++] = m.vertices[i+5];
-		
-		// position
-		mesh.vertices[index++] = m.vertices[i] + m.vertices[i+3]*0.5;
-		mesh.vertices[index++] = m.vertices[i+1] + m.vertices[i+4]*0.5;
-		mesh.vertices[index++] = m.vertices[i+2] + m.vertices[i+5]*0.5;
-		
-		// normals
-		mesh.vertices[index++] = m.vertices[i+3];
-		mesh.vertices[index++] = m.vertices[i+4];
-		mesh.vertices[index++] = m.vertices[i+5];
-	}
-	
-	for (var i = 0; i < m.vertices.length/mesh.vertex_size*2; i++) {
-		mesh.indices[i] = i;
-	}
-	
-	mesh.init();
-	
-	return mesh;
-}
 
-function createMesh(type, numVertices, numIndices) {
-	var mesh = {
-		type: type,
-		vertex_size: 6,
-		numVertices: numVertices,
-		vertices: new Float32Array(numVertices),
-		numIndices: numIndices,
-		indices: new Uint16Array(numIndices),
-		init: function () {
-			// vbo
-			this.vbo = gl.createBuffer();
-			gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vbo);
-			gl.bufferData(gl.ARRAY_BUFFER, this.vertices, gl.STATIC_DRAW);
-			
-			// ibo
-			this.ibo = gl.createBuffer();
-			gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ibo);
-			gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, this.indices, gl.STATIC_DRAW);
-		}
-	};
-	
-	return mesh;
-}
-
-function load_shader(vertexURL, fragmentURL) {
-	var program = gl.createProgram();
-	program.loaded = false;
-	
-	$.ajax({
-	  url: vertexURL
-	}).done(function(vertex) {
-		$.ajax({
-		  url: fragmentURL
-		}).done(function(fragment) {
-		
-			// compile vertex shader
-			var vertexShader = gl.createShader(gl.VERTEX_SHADER);
-			gl.shaderSource(vertexShader, vertex);
-			gl.compileShader(vertexShader);
-			
-			if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
-				console.log('vertex compiler: ' +  gl.getShaderInfoLog(vertexShader));
-				return;
-			}
-			
-			// compile fragment shader
-			var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-			gl.shaderSource(fragmentShader, fragment);
-			gl.compileShader(fragmentShader);
-			
-			if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
-				console.log('fragment compiler: ' +  gl.getShaderInfoLog(vertexShader));
-				return;
-			}
-			
-			// attach our two shaders to the program
-			gl.attachShader(program, vertexShader);
-			gl.attachShader(program, fragmentShader);
-			
-			// linking
-			gl.linkProgram(program);
-			if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-				console.log('linking: ' + gl.getProgramInfoLog(program));
-				return;
-			}
-			
-			// setup shader
-			gl.useProgram(program);
-			
-			// attributes
-			program.vertexPosition = gl.getAttribLocation(program, 'aVertexPosition');
-			program.aVertexNormal = gl.getAttribLocation(program, 'aVertexNormal');
-			gl.enableVertexAttribArray(program.vertexPosition);			
-			
-			// uniforms
-			program.uProjectionMatrix = gl.getUniformLocation(program, 'uProjectionMatrix');
-			program.uViewMatrix = gl.getUniformLocation(program, 'uViewMatrix');
-			program.uNormalMatrix = gl.getUniformLocation(program, 'uNormalMatrix');
-			program.uUseLight = gl.getUniformLocation(program, 'uUseLight');
-			program.uLightDirection = gl.getUniformLocation(program, 'uLightDirection');
-			program.uLightColor = gl.getUniformLocation(program, 'uLightColor');
-			program.uDiffuseColor = gl.getUniformLocation(program, 'uDiffuseColor');
-			program.uAmbientColor = gl.getUniformLocation(program, 'uAmbientColor');
-			
-			program.loaded = true;
-		});
-	});
-	
-	return program;
-}
 
 // keydown event
 $(window).keydown(function(event) {
@@ -373,7 +207,7 @@ $(window).keyup(function(event) {
 });*/
 
 window.onmousewheel = function(e) {
-	camera.zoom += e.wheelDelta ? e.wheelDelta/2000 : -e.detail/100;
+	camera.zoom += e.wheelDelta ? e.wheelDelta*0.00001 : -e.detail*0.00001;
 	camera.zoom = Math.max(0, camera.zoom);
 };
 
