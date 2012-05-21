@@ -25,7 +25,7 @@ function editor_init() {
 	diffuse_grass = load_texture('img/grass_diffuse.png');
 	
 	// create terrain
-	terrain = createTerrain(64, 2, 64);
+	terrain = createTerrain(128, 3, 128);
 	
 	// setup projection matrix
 	projectionMatrix = mat4.create();
@@ -41,7 +41,7 @@ function editor_init() {
 	camera = {x: 0.0, y: 0.0, z: 3.0, zoom: 0.025};
 	
 	// terrain
-	model = {x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 1, sx: 0.01, sy: 0.01, sz: 0.01};
+	model = {x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 1, sx: 1, sy: 1, sz: 1};
 	
 	// keyboard
 	keys = new Object();
@@ -74,13 +74,13 @@ function update() {
 		useLight = true;
 	}
 	
-	drawMesh(program, terrain, [0.3, 0.3, 0.3, 1.0], useLight);
+	drawMesh(program, terrain, [0.3, 0.3, 0.3, 1.0], diffuse_grass, useLight);
 	if ($('#vertexNormals').attr('checked')) {
 		if (!terrain.normalMesh) {
 			terrain.normalMesh = createNormalMesh(terrain);
 		}
 	
-		drawMesh(program, terrain.normalMesh, [1.0, 0.0, 0.0, 1.0], useLight);
+		drawMesh(program, terrain.normalMesh, [0.5, 0.0, 0.0, 1.0], diffuse_grass, false);
 	}
 	
 	if ($('#faceNormals').attr('checked')) {
@@ -88,7 +88,7 @@ function update() {
 			terrain.faceNormalMesh = createFaceNormalMesh(terrain);
 		}
 	
-		drawMesh(program, terrain.faceNormalMesh, [1.0, 0.0, 0.0, 1.0], useLight);
+		drawMesh(program, terrain.faceNormalMesh, [0.5, 0.0, 0.0, 1.0], diffuse_grass, false);
 	}
 }
 
@@ -119,6 +119,9 @@ function createTerrain(width, height, depth) {
 				mesh.vertices[index++] = normal[0];
 				mesh.vertices[index++] = normal[1];
 				mesh.vertices[index++] = normal[2];
+				
+				mesh.vertices[index++] = 1.0/width*x;
+				mesh.vertices[index++] = 1.0/height*y;
 			}
 		}
 	}
@@ -217,8 +220,6 @@ $(document).ready(function() {
 	canvas = document.getElementById('canvas');
 	editor_init();
 	requestAnimationFrame(update);
-	
-	$('#toolbox').style.left = (window.innerWidth - 100) + 'px';
 });
 
 // window resize events

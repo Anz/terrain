@@ -14,6 +14,10 @@ function createNormalMesh(m) {
 		mesh.vertices[index++] = m.vertices[i+4];
 		mesh.vertices[index++] = m.vertices[i+5];
 		
+		// texutre coordinates
+		mesh.vertices[index++] = 0;
+		mesh.vertices[index++] = 0;
+		
 		// position
 		mesh.vertices[index++] = m.vertices[i] + m.vertices[i+3];
 		mesh.vertices[index++] = m.vertices[i+1] + m.vertices[i+4];
@@ -23,6 +27,10 @@ function createNormalMesh(m) {
 		mesh.vertices[index++] = m.vertices[i+3];
 		mesh.vertices[index++] = m.vertices[i+4];
 		mesh.vertices[index++] = m.vertices[i+5];
+		
+		// texutre coordinates
+		mesh.vertices[index++] = 0;
+		mesh.vertices[index++] = 0;
 		
 		mesh.indices[indicesIndex] = indicesIndex++;
 		mesh.indices[indicesIndex] = indicesIndex++;
@@ -72,6 +80,10 @@ function createFaceNormalMesh(m) {
 		mesh.vertices[index++] = normal[0];
 		mesh.vertices[index++] = normal[1];
 		mesh.vertices[index++] = normal[2];
+	
+		// texutre coordinates
+		mesh.vertices[index++] = 0;
+		mesh.vertices[index++] = 0;
 		
 		// position
 		mesh.vertices[index++] = vcenter[0] + normal[0];
@@ -82,6 +94,10 @@ function createFaceNormalMesh(m) {
 		mesh.vertices[index++] = normal[0];
 		mesh.vertices[index++] = normal[1];
 		mesh.vertices[index++] = normal[2];
+		
+		// texutre coordinates
+		mesh.vertices[index++] = 0;
+		mesh.vertices[index++] = 0;
 		
 		mesh.indices[indicesIndex] = indicesIndex++;
 		mesh.indices[indicesIndex] = indicesIndex++;

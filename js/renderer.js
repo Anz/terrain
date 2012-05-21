@@ -1,4 +1,4 @@
-function drawMesh(program, mesh, diffuseColor, useLight) {
+function drawMesh(program, mesh, diffuseColor, texture, useLight) {
 	if (!program.loaded) {
 		return;
 	}
@@ -28,29 +28,31 @@ function drawMesh(program, mesh, diffuseColor, useLight) {
     mat4.toInverseMat3(modelMatrix, normalMatrix);
     mat3.transpose(normalMatrix);
 	
-	//mat4.multiply(modelMatrix, viewMatrix, viewMatrix);
+	// texture
+	//gl.activeTexture(gl.TEXTURE0);
+   // gl.bindTexture(gl.TEXTURE_2D, texture);
+   // gl.uniform1i(shaderProgram.uDiffuseTexture, 0);
 	
 	// uniforms
 	gl.uniformMatrix4fv(program.uProjectionMatrix, false, projectionMatrix);
 	gl.uniformMatrix4fv(program.uViewMatrix, false, viewMatrix);
 	gl.uniformMatrix3fv(program.uNormalMatrix, false, normalMatrix);
 	gl.uniform4f(program.uDiffuseColor, diffuseColor[0], diffuseColor[1], diffuseColor[2], diffuseColor[3]);
-	gl.uniform3f(program.uAmbientColor, 0.2, 0.2, 0.2);
+	gl.uniform3f(program.uAmbientColor, 0.0, 0.0, 0.0);
 	gl.uniform1i(program.uUseLight, useLight);
 
 	// light
 	var lightDirection = vec3.create();
-	//vec3.normalize([-0.25, -0.25, -1.0], lightDirection);
-	vec3.normalize([-0.4, -0.4, 0.0], lightDirection);
-	//vec3.normalize([-Math.sin(f), -Math.cos(f), -Math.tan(f)], lightDirection);
+	vec3.normalize([-0.2, -25.0, 0.0], lightDirection);
 	vec3.scale(lightDirection, -1);
 	gl.uniform3fv(program.uLightDirection, lightDirection);
-	gl.uniform3fv(program.uLightColor, [0.8, 0.8, 0.8]);
+	gl.uniform3fv(program.uLightColor, [0.9, 0.9, 0.9]);
 
 	// vertices
 	gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vbo);
-	gl.vertexAttribPointer(program.vertexPosition, 3, gl.FLOAT, false, 6*4, 0);
-	gl.vertexAttribPointer(program.aVertexNormal, 3, gl.FLOAT, false, 6*4, 3*4);
+	gl.vertexAttribPointer(program.vertexPosition, 3, gl.FLOAT, false, mesh.vertexSize*4, 0);
+	gl.vertexAttribPointer(program.aVertexNormal, 3, gl.FLOAT, false, mesh.vertexSize*4, 3*4);
+	gl.vertexAttribPointer(program.aTextureCoord, 2, gl.FLOAT, false, mesh.vertexSize*4, 6*4);
 
 	// indices
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ibo);
@@ -137,7 +139,10 @@ function load_shader(vertexURL, fragmentURL) {
 			// attributes
 			program.vertexPosition = gl.getAttribLocation(program, 'aVertexPosition');
 			program.aVertexNormal = gl.getAttribLocation(program, 'aVertexNormal');
-			gl.enableVertexAttribArray(program.vertexPosition);			
+			program.aTextureCoord = gl.getAttribLocation(program, 'aTextureCoord');
+			gl.enableVertexAttribArray(program.vertexPosition);
+			gl.enableVertexAttribArray(program.aVertexNormal);
+			gl.enableVertexAttribArray(program.aTextureCoord);		
 			
 			// uniforms
 			program.uProjectionMatrix = gl.getUniformLocation(program, 'uProjectionMatrix');
@@ -148,6 +153,7 @@ function load_shader(vertexURL, fragmentURL) {
 			program.uLightColor = gl.getUniformLocation(program, 'uLightColor');
 			program.uDiffuseColor = gl.getUniformLocation(program, 'uDiffuseColor');
 			program.uAmbientColor = gl.getUniformLocation(program, 'uAmbientColor');
+			program.uDiffuseTexture = gl.getUniformLocation(program, 'uDiffuseTexture');
 			
 			program.loaded = true;
 		});

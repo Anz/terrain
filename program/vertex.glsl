@@ -1,5 +1,6 @@
 attribute vec3 aVertexPosition;
 attribute vec3 aVertexNormal;
+attribute vec2 aTextureCoord;
 
 uniform mat4 uProjectionMatrix;
 uniform mat4 uViewMatrix;
@@ -15,6 +16,7 @@ uniform vec3 uLightColor;
 
 varying vec3 vLightWeighting;
 varying vec4 vDiffuseColor;
+varying vec2 vTextureCoord;
 
 void main() {
 		vec4 position = uViewMatrix*vec4(aVertexPosition.x, aVertexPosition.y, aVertexPosition.z, 1.0);
@@ -22,6 +24,7 @@ void main() {
 		gl_Position = uProjectionMatrix*position;
 		vDiffuseColor = uDiffuseColor;
 		gl_PointSize = 3.0;
+		vTextureCoord = aTextureCoord;
 		
 		if (uUseLight) {
 			vec3 transformedNormal = uNormalMatrix * aVertexNormal;
