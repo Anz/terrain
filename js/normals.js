@@ -36,10 +36,6 @@ function createNormalMesh(m) {
 		mesh.indices[indicesIndex] = indicesIndex++;
 	}
 	
-	/*for (var i = 0; i < mesh.indices.length; i++) {
-		mesh.indices[i] = i;
-	}*/
-	
 	mesh.init();
 	
 	return mesh;

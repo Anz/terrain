@@ -1,4 +1,4 @@
-function drawMesh(program, mesh, diffuseColor, texture, useLight) {
+﻿function drawMesh(program, mesh, diffuseColor, texture, useLight) {
 	if (!program.loaded) {
 		return;
 	}
@@ -29,9 +29,9 @@ function drawMesh(program, mesh, diffuseColor, texture, useLight) {
     mat3.transpose(normalMatrix);
 	
 	// texture
-	//gl.activeTexture(gl.TEXTURE0);
-   // gl.bindTexture(gl.TEXTURE_2D, texture);
-   // gl.uniform1i(shaderProgram.uDiffuseTexture, 0);
+	gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.uniform1i(program.uDiffuseTexture, 0);
 	
 	// uniforms
 	gl.uniformMatrix4fv(program.uProjectionMatrix, false, projectionMatrix);
@@ -50,8 +50,17 @@ function drawMesh(program, mesh, diffuseColor, texture, useLight) {
 
 	// vertices
 	gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vbo);
+	
+	// vertex position
+	gl.enableVertexAttribArray(program.vertexPosition);
 	gl.vertexAttribPointer(program.vertexPosition, 3, gl.FLOAT, false, mesh.vertexSize*4, 0);
+	
+	// vertex normal
+	gl.enableVertexAttribArray(program.aVertexNormal);
 	gl.vertexAttribPointer(program.aVertexNormal, 3, gl.FLOAT, false, mesh.vertexSize*4, 3*4);
+	
+	// vertex texture coordinates
+	gl.enableVertexAttribArray(program.aTextureCoord);
 	gl.vertexAttribPointer(program.aTextureCoord, 2, gl.FLOAT, false, mesh.vertexSize*4, 6*4);
 
 	// indices
@@ -91,15 +100,18 @@ function load_texture(url){
 	return texture;
 }
 
+
 function load_shader(vertexURL, fragmentURL) {
 	var program = gl.createProgram();
 	program.loaded = false;
 	
 	$.ajax({
-	  url: vertexURL
-	}).done(function(vertex) {
+	  url: vertexURL,
+	  dataType: 'text'
+	}).done(function(vertex) {	
 		$.ajax({
-		  url: fragmentURL
+		  url: fragmentURL,
+		  dataType: 'text'
 		}).done(function(fragment) {
 		
 			// compile vertex shader
@@ -140,9 +152,6 @@ function load_shader(vertexURL, fragmentURL) {
 			program.vertexPosition = gl.getAttribLocation(program, 'aVertexPosition');
 			program.aVertexNormal = gl.getAttribLocation(program, 'aVertexNormal');
 			program.aTextureCoord = gl.getAttribLocation(program, 'aTextureCoord');
-			gl.enableVertexAttribArray(program.vertexPosition);
-			gl.enableVertexAttribArray(program.aVertexNormal);
-			gl.enableVertexAttribArray(program.aTextureCoord);		
 			
 			// uniforms
 			program.uProjectionMatrix = gl.getUniformLocation(program, 'uProjectionMatrix');

@@ -25,7 +25,7 @@ function editor_init() {
 	diffuse_grass = load_texture('img/grass_diffuse.png');
 	
 	// create terrain
-	terrain = createTerrain(128, 3, 128);
+	terrain = createTerrain(128, 2, 128);
 	
 	// setup projection matrix
 	projectionMatrix = mat4.create();
@@ -120,8 +120,9 @@ function createTerrain(width, height, depth) {
 				mesh.vertices[index++] = normal[1];
 				mesh.vertices[index++] = normal[2];
 				
+				// texture coordinates
+				mesh.vertices[index++] = 1.0/depth*z;
 				mesh.vertices[index++] = 1.0/width*x;
-				mesh.vertices[index++] = 1.0/height*y;
 			}
 		}
 	}
