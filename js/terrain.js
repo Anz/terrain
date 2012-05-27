@@ -11,25 +11,42 @@ function editor_init() {
 	gl = canvas.getContext('experimental-webgl');
 	gl.clearColor(1.0, 1.0, 1.0, 1.0);
 	gl.enable(gl.DEPTH_TEST);
-	gl.depthFunc(gl.LESS);
+	gl.depthFunc(gl.LEQUAL);
 	
 	gl.frontFace(gl.CW);
 	gl.enable(gl.CULL_FACE);
 	gl.cullFace(gl.BACK);
-	gl.lineWidth(2.0); 
+	gl.lineWidth(2.0);
 	
 	// load shaders
 	program = load_shader('program/vertex.glsl', 'program/fragment.glsl');
 	
 	// load textures
 	diffuse_grass = load_texture('img/grass_diffuse.png');
+	heightmap = load_texture('img/heightmap.png');
+	whiteMap = createTexture([255,255,255,255],1,1);
+	
+	// render settings
+	renderSettings = new RenderSettings();
+	normalRenderSettings = new RenderSettings();
+	normalRenderSettings.useLight = false;
+	
+	// light
+	light = new Light();
+	light.color = [1.0, 0.8, 0.8];
+	vec3.normalize([-0.2, -25.0, 0.0], light.direction);
+	vec3.scale(light.direction, -1);
+	
+	// material
+	terrainMaterial = new Material([0.0, 0.0, 0.0], [0.3, 0.3, 0.3, 1.0], diffuse_grass, heightmap);
+	normalMaterial = new Material([0.0, 0.0, 0.0], [0.5, 0.0, 0.0, 1.0], whiteMap, heightmap);
 	
 	// create terrain
 	terrain = createTerrain(128, 2, 128);
 	
 	// setup projection matrix
 	projectionMatrix = mat4.create();
-	mat4.perspective(45, canvas.width/canvas.height, 0.1, 100, projectionMatrix);
+	mat4.perspective(45, canvas.width/canvas.height, 0.001, 100000.0, projectionMatrix);
 	
 	// setup view matrix
 	viewMatrix = mat4.create();
@@ -38,10 +55,10 @@ function editor_init() {
 	modelMatrix = mat4.create();
 	
 	// camera
-	camera = {x: 0.0, y: 0.0, z: 3.0, zoom: 0.025};
+	camera = {x: 0.0, y: 1.0, z: 3.0, zoom: 1.0};
 	
 	// terrain
-	model = {x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 1, sx: 1, sy: 1, sz: 1};
+	model = {x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, sx: 1.0, sy: 1.0, sz: 1.0};
 	
 	// keyboard
 	keys = new Object();
@@ -52,10 +69,10 @@ function update() {
 	requestAnimationFrame(update);
 	
 	// navigation
-	if (keys[65]) camera.x -= 0.1;
-	if (keys[68]) camera.x += 0.1;
-	if (keys[83]) camera.y -= 0.1;
-	if (keys[87]) camera.y += 0.1;
+	if (keys[65]) camera.x -= 10.0;
+	if (keys[68]) camera.x += 10.0;
+	if (keys[83]) camera.y -= 10.0;
+	if (keys[87]) camera.y += 10.0;
 	
 
 	// clear buffer
@@ -69,18 +86,17 @@ function update() {
 	}
 	
 	// render
-	var useLight = false;
-	if ($('#lighting').attr('checked')) {
-		useLight = true;
-	}
+	renderSettings.useLight = typeof($('#lighting').attr('checked')) != 'undefined';
+	renderSettings.useDiffuseMap = typeof($('#diffuseMap').attr('checked')) != 'undefined';
+	renderSettings.useHeightMap = typeof($('#heightMap').attr('checked')) != 'undefined';
 	
-	drawMesh(program, terrain, [0.3, 0.3, 0.3, 1.0], diffuse_grass, useLight);
+	drawMesh(program, terrain, terrainMaterial, renderSettings, light);
 	if ($('#vertexNormals').attr('checked')) {
 		if (!terrain.normalMesh) {
 			terrain.normalMesh = createNormalMesh(terrain);
 		}
 	
-		drawMesh(program, terrain.normalMesh, [0.5, 0.0, 0.0, 1.0], diffuse_grass, false);
+		drawMesh(program, terrain.normalMesh, normalMaterial, normalRenderSettings, light);
 	}
 	
 	if ($('#faceNormals').attr('checked')) {
@@ -88,7 +104,7 @@ function update() {
 			terrain.faceNormalMesh = createFaceNormalMesh(terrain);
 		}
 	
-		drawMesh(program, terrain.faceNormalMesh, [0.5, 0.0, 0.0, 1.0], diffuse_grass, false);
+		drawMesh(program, terrain.faceNormalMesh, normalMaterial, normalRenderSettings, light);
 	}
 }
 
@@ -109,16 +125,35 @@ function createTerrain(width, height, depth) {
 				mesh.vertices[index++] = z - (depth-1)/2;
 				
 				// normal
-				var normal = [
-					(x <= 0) ? -1.0 : ((x >= width-1) ? 1.0 : 0.0),
-					(y <= 0) ? -1.0 : ((y >= height-1) ? 1.0 : 0.0),
-					(z <= 0) ? -1.0 : ((z >= depth-1) ? 1.0 : 0.0)
-				];
-				vec3.normalize(normal);
-				
-				mesh.vertices[index++] = normal[0];
-				mesh.vertices[index++] = normal[1];
-				mesh.vertices[index++] = normal[2];
+				if (x <= 0) {
+					mesh.vertices[index++] = -1.0;
+					mesh.vertices[index++] = 0.0;
+					mesh.vertices[index++] = 0.0;
+				} else if (x >= width-1) {
+					mesh.vertices[index++] = 1.0;
+					mesh.vertices[index++] = 0.0;
+					mesh.vertices[index++] = 0.0;
+				} else if (z <= 0) {
+					mesh.vertices[index++] = 0.0;
+					mesh.vertices[index++] = 0.0;
+					mesh.vertices[index++] = -1.0;
+				} else if (z >= depth-1) {
+					mesh.vertices[index++] = 0.0;
+					mesh.vertices[index++] = 0.0;
+					mesh.vertices[index++] = 1.0;
+				} else if (y <= 0) {
+					mesh.vertices[index++] = 0.0;
+					mesh.vertices[index++] = -1.0;
+					mesh.vertices[index++] = -1.0;
+				} else if (y >= height-1) {
+					mesh.vertices[index++] = 0.0;
+					mesh.vertices[index++] = 1.0;
+					mesh.vertices[index++] = 0.0;
+				}  else {
+					mesh.vertices[index++] = 0.0;
+					mesh.vertices[index++] = 0.0;
+					mesh.vertices[index++] = 0.0;
+				}
 				
 				// texture coordinates
 				mesh.vertices[index++] = 1.0/depth*z;
@@ -211,8 +246,8 @@ $(window).keyup(function(event) {
 });*/
 
 window.onmousewheel = function(e) {
-	camera.zoom += e.wheelDelta ? e.wheelDelta*0.00001 : -e.detail*0.00001;
-	camera.zoom = Math.max(0, camera.zoom);
+	camera.z += e.wheelDelta ? e.wheelDelta : -e.detail;
+	//camera.z = Math.max(0, camera.z);
 };
 
 

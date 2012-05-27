@@ -1,12 +1,31 @@
-﻿function drawMesh(program, mesh, diffuseColor, texture, useLight) {
+﻿function RenderSettings() {
+	this.useLight = true;
+	this.useDiffuseMap = true;
+	this.useHeightMap = true;
+}
+
+function Light() {
+	this.direction = vec3.create();
+	this.color = vec3.create();
+}
+
+function Material(ambientColor, diffuseColor, diffuseMap, heightMap) {
+	this.ambientColor = ambientColor;
+	this.diffuseColor = diffuseColor;
+	this.diffuseMap = diffuseMap;
+	this.heightMap = heightMap;
+}
+
+
+function drawMesh(program, mesh, material, renderSettings, light) {
 	if (!program.loaded) {
 		return;
 	}
 	
 	gl.useProgram(program);
 	
-	f += 0.001;
-	//f = Math.PI/4;
+	//f += 0.001;
+	f = Math.PI/4;
 	
 	// view matrix
 	mat4.identity(viewMatrix);
@@ -23,30 +42,40 @@
 	mat4.rotate(modelMatrix, model.rz, [0, 0, 1]);
 	mat4.scale(modelMatrix, [model.sx, model.sy, model.sz]);
 	
+	// model view matrix
+	var modelViewMatrix = mat4.create();
+	mat4.multiply(viewMatrix, modelMatrix, modelViewMatrix);
+	
 	// normal matrix
 	var normalMatrix = mat3.create();
     mat4.toInverseMat3(modelMatrix, normalMatrix);
     mat3.transpose(normalMatrix);
 	
-	// texture
-	gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.uniform1i(program.uDiffuseTexture, 0);
-	
 	// uniforms
 	gl.uniformMatrix4fv(program.uProjectionMatrix, false, projectionMatrix);
-	gl.uniformMatrix4fv(program.uViewMatrix, false, viewMatrix);
+	gl.uniformMatrix4fv(program.uViewMatrix, false, modelViewMatrix);
 	gl.uniformMatrix3fv(program.uNormalMatrix, false, normalMatrix);
-	gl.uniform4f(program.uDiffuseColor, diffuseColor[0], diffuseColor[1], diffuseColor[2], diffuseColor[3]);
-	gl.uniform3f(program.uAmbientColor, 0.0, 0.0, 0.0);
-	gl.uniform1i(program.uUseLight, useLight);
+	
+	// render settings
+	gl.uniform1i(program.uRenderSettings.useLight, renderSettings.useLight);
+	gl.uniform1i(program.uRenderSettings.useDiffuseMap, renderSettings.useDiffuseMap);
+	gl.uniform1i(program.uRenderSettings.useHeightMap, renderSettings.useHeightMap);
 
-	// light
-	var lightDirection = vec3.create();
-	vec3.normalize([-0.2, -25.0, 0.0], lightDirection);
-	vec3.scale(lightDirection, -1);
-	gl.uniform3fv(program.uLightDirection, lightDirection);
-	gl.uniform3fv(program.uLightColor, [0.9, 0.9, 0.9]);
+	// light	
+	gl.uniform3fv(program.uLight.direction, light.direction);
+	gl.uniform3fv(program.uLight.color, light.color);
+	
+	// material
+	gl.uniform4fv(program.uMaterial.diffuseColor, material.diffuseColor);
+	gl.uniform3fv(program.uMaterial.ambientColor, material.ambientColor);
+	
+	gl.uniform1i(program.uDiffuseMap, 0);
+	gl.activeTexture(gl.TEXTURE0);
+	gl.bindTexture(gl.TEXTURE_2D, material.diffuseMap);
+	
+	gl.uniform1i(program.uHeightMap, 1);
+	gl.activeTexture(gl.TEXTURE0 + 1);
+	gl.bindTexture(gl.TEXTURE_2D, material.heightMap);
 
 	// vertices
 	gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vbo);
@@ -67,15 +96,29 @@
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ibo);
 	
 	// draw the buffer
-	if (mesh.type == gl.POINTS || mesh.type == gl.LINES || $('#faces').attr('checked')) {
+	if (mesh.type == gl.POINTS || mesh.type == gl.LINES || $('#faces').attr('checked')) {	
 		gl.drawElements(mesh.type, mesh.numIndices, gl.UNSIGNED_SHORT, 0);
 	} 
 	if (mesh.type != gl.LINES && $('#wireframe').attr('checked')) {
+	
+		gl.uniform1i(program.uRenderSettings.useLight, false);
+		gl.uniform1i(program.uRenderSettings.useDiffuseMap, false);
+		gl.uniform1i(program.uDiffuseMap, 0);
+		gl.activeTexture(gl.TEXTURE0);
+		gl.bindTexture(gl.TEXTURE_2D, whiteMap);
+	
 		gl.uniform4f(program.uDiffuseColor, 0.6, 0.6, 0.6,1.0);
 		gl.drawElements(gl.LINE_STRIP, mesh.numIndices, gl.UNSIGNED_SHORT, 0);
 	}
 	
 	if (mesh.type != gl.POINTS && $('#vertices').attr('checked')) {
+	
+		gl.uniform1i(program.uRenderSettings.useLight, false);
+		gl.uniform1i(program.uRenderSettings.useDiffuseMap, false);
+		gl.uniform1i(program.uDiffuseMap, 0);
+		gl.activeTexture(gl.TEXTURE0);
+		gl.bindTexture(gl.TEXTURE_2D, whiteMap);
+	
 		gl.uniform4f(program.uDiffuseColor, 0.0, 1.0, 0.0,1.0);
 		gl.drawElements(gl.POINTS, mesh.numIndices, gl.UNSIGNED_SHORT, 0);
 	}
@@ -91,11 +134,24 @@ function load_texture(url){
 		gl.bindTexture(gl.TEXTURE_2D, texture);
 		gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 	}
 
 	texture.image.src = url;
+	
+	return texture;
+}
+
+function createTexture(pixels,width,height) {
+	var data = new Uint8Array(pixels);
+	var texture = gl.createTexture();
+	gl.bindTexture(gl.TEXTURE_2D, texture);
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+	texture.width = width;
+	texture.height = height;
 	
 	return texture;
 }
@@ -157,12 +213,24 @@ function load_shader(vertexURL, fragmentURL) {
 			program.uProjectionMatrix = gl.getUniformLocation(program, 'uProjectionMatrix');
 			program.uViewMatrix = gl.getUniformLocation(program, 'uViewMatrix');
 			program.uNormalMatrix = gl.getUniformLocation(program, 'uNormalMatrix');
-			program.uUseLight = gl.getUniformLocation(program, 'uUseLight');
-			program.uLightDirection = gl.getUniformLocation(program, 'uLightDirection');
-			program.uLightColor = gl.getUniformLocation(program, 'uLightColor');
-			program.uDiffuseColor = gl.getUniformLocation(program, 'uDiffuseColor');
-			program.uAmbientColor = gl.getUniformLocation(program, 'uAmbientColor');
-			program.uDiffuseTexture = gl.getUniformLocation(program, 'uDiffuseTexture');
+			
+			// render settings
+			program.uRenderSettings = new Object();
+			program.uRenderSettings.useLight = gl.getUniformLocation(program, 'uRenderSettings.useLight');
+			program.uRenderSettings.useDiffuseMap = gl.getUniformLocation(program, 'uRenderSettings.useDiffuseMap');
+			program.uRenderSettings.useHeightMap = gl.getUniformLocation(program, 'uRenderSettings.useHeightMap');
+			
+			// light
+			program.uLight = new Object();
+			program.uLight.direction = gl.getUniformLocation(program, 'uLight.direction');
+			program.uLight.color = gl.getUniformLocation(program, 'uLight.color');
+			
+			// material
+			program.uMaterial = new Object();
+			program.uMaterial.ambientColor = gl.getUniformLocation(program, 'uMaterial.ambientColor');
+			program.uMaterial.diffuseColor = gl.getUniformLocation(program, 'uMaterial.diffuseColor');
+			program.uDiffuseMap = gl.getUniformLocation(program, 'uDiffuseMap');
+			program.uHeightMap = gl.getUniformLocation(program, 'uHeightMap');
 			
 			program.loaded = true;
 		});
