@@ -1,6 +1,5 @@
 struct RenderSettings {
 	int lighting;
-	bool useHeightMap;
 	int textureMapping;
 };
 
@@ -30,6 +29,7 @@ uniform Light uLight;
 uniform Material uMaterial;
 
 
+varying vec4 vVertexPosition;
 varying vec3 vTransformedNormal;
 varying vec2 vTextureCoord;
 varying vec3 vLightWeighting;
@@ -59,26 +59,26 @@ vec3 calcNormalFromHeightMap() {
 
 void main() {
 		float height = aVertexPosition.y;
+		vec4 position;
 		
-		if (uRenderSettings.useHeightMap && height >= 0.0) {
+		if (height >= 0.0) {
 			vec4 texel = texture2D(uHeightMap, aTextureCoord);
 			height += (texel.r + texel.g + texel.b) / 3.0 * 100.0;
 			
 			vTransformedNormal = uNormalMatrix * calcNormalFromHeightMap();
 			
-			vec4 position = uViewMatrix*vec4(aVertexPosition.x, aVertexPosition.y + height, aVertexPosition.z, 1.0);
-
-			gl_Position = uProjectionMatrix*position;
+			position = uViewMatrix*vec4(aVertexPosition.x, aVertexPosition.y + height, aVertexPosition.z, 1.0);
 		} else{
 			vTransformedNormal = uNormalMatrix * vec3(0.0, 1.0, 0.0);
 			
-			vec4 position = uViewMatrix*vec4(aVertexPosition.x, aVertexPosition.y, aVertexPosition.z, 1.0);
-			gl_Position = uProjectionMatrix*position;
+			position = uViewMatrix*vec4(aVertexPosition.x, aVertexPosition.y, aVertexPosition.z, 1.0);
 		}
+		
+		vVertexPosition = uProjectionMatrix*position;
+		gl_Position = vVertexPosition;
 		
 		float directionalLightWeighting = max(dot(vTransformedNormal, uLight.direction), 0.0);
 		vLightWeighting = uMaterial.ambientColor + uLight.color*directionalLightWeighting;
-		
 		
 		vTextureCoord = aTextureCoord;
 		gl_PointSize = 3.0;

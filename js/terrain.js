@@ -22,7 +22,7 @@ function editor_init() {
 	program = load_shader('program/vertex.glsl', 'program/fragment.glsl');
 	
 	// load textures
-	diffuse_grass = load_texture('img/grass_diffuse.png');
+	diffuse_grass = load_texture('img/diffuse.png');
 	heightmap = load_texture('img/heightmap.png');
 	whiteMap = createTexture([255,255,255,255],1,1);
 	
@@ -33,13 +33,12 @@ function editor_init() {
 	
 	// light
 	light = new Light();
-	light.color = [0.5, 0.5, 0.5];
-	vec3.normalize([-0.2, -25.0, 0.0], light.direction);
+	light.color = [0.8, 0.8, 0.8];
+	light.direction = [-0.25, -25.0, -1.0];
 	vec3.scale(light.direction, -1);
 	
 	// material
-	terrainMaterial = new Material([0.0, 0.0, 0.0], [0.3, 0.3, 0.3, 1.0], diffuse_grass, heightmap);
-	normalMaterial = new Material([0.0, 0.0, 0.0], [0.5, 0.0, 0.0, 1.0], whiteMap, heightmap);
+	terrainMaterial = new Material([0.2, 0.2, 0.2], [0.3, 0.3, 0.3, 1.0], diffuse_grass, heightmap);
 	
 	// create terrain
 	terrain = createTerrain2(128, 2, 128);
@@ -55,10 +54,10 @@ function editor_init() {
 	modelMatrix = mat4.create();
 	
 	// camera
-	camera = {x: 0.0, y: 100.0, z: -800.0, zoom: 1.0};
+	camera = {x: 0.0, y: 100.0, z: -5000.0, zoom: 1.0};
 	
 	// terrain
-	model = {x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, sx: 3.0, sy: 3.0, sz: 3.0};
+	model = {x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, sx: 10.0, sy: 10.0, sz: 10.0};
 	
 	// keyboard
 	keys = new Object();
@@ -92,7 +91,6 @@ function update() {
 	
 	// render
 	renderSettings.lighting = $('input[name=lighting]:checked').val();
-	renderSettings.useHeightMap = typeof(elementHeightMap.attr('checked')) != 'undefined';
 	renderSettings.textureMapping = $('input[name=mapping]:checked').val();
 	
 	drawMesh(program, terrain.frontMesh, terrainMaterial, renderSettings, light);

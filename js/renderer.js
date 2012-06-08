@@ -1,6 +1,5 @@
 ﻿function RenderSettings() {
 	this.lighting = 0;
-	this.useHeightMap = true;
 	this.textureMapping = 0;
 }
 
@@ -60,11 +59,13 @@ function drawMesh(program, mesh, material, renderSettings, light) {
 	
 	// render settings
 	gl.uniform1i(program.uRenderSettings.lighting, renderSettings.lighting);
-	gl.uniform1i(program.uRenderSettings.useHeightMap, renderSettings.useHeightMap);
 	gl.uniform1i(program.uRenderSettings.textureMapping, renderSettings.textureMapping);
 
-	// light	
-	gl.uniform3fv(program.uLight.direction, light.direction);
+	// light
+	var adjustedLD = vec3.create();
+	vec3.normalize(light.direction, adjustedLD);
+	
+	gl.uniform3fv(program.uLight.direction, adjustedLD);
 	gl.uniform3fv(program.uLight.color, light.color);
 	
 	// material
@@ -216,7 +217,6 @@ function load_shader(vertexURL, fragmentURL) {
 			// render settings
 			program.uRenderSettings = new Object();
 			program.uRenderSettings.lighting = gl.getUniformLocation(program, 'uRenderSettings.lighting');
-			program.uRenderSettings.useHeightMap = gl.getUniformLocation(program, 'uRenderSettings.useHeightMap');
 			program.uRenderSettings.textureMapping = gl.getUniformLocation(program, 'uRenderSettings.textureMapping');
 			
 			// light
