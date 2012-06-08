@@ -36,16 +36,28 @@
 				<div class="row">
 						<form class="well">
 							<label>Rendering</label>
-							<label class="checkbox"><input id="lighting" type="checkbox" checked>Lighting</label>
-							<label class="checkbox"><input id="diffuseMap" type="checkbox" checked>Diffuse Map</label>
 							<label class="checkbox"><input id="heightMap" type="checkbox" checked>Heightmap</label>
 							<label class="checkbox"><input id="depthbuffer" type="checkbox" checked>Depth Buffer</label>
 						</form>
 						
 						<form class="well">
+							<label>Lighting</label>
+							<label class="radio"><input type="radio" name="lighting" value="0">None</label>
+							<label class="radio"><input type="radio" name="lighting" value="1">Per-Vertex (low)</label>
+							<label class="radio"><input type="radio" name="lighting" value="2" checked="">Per-Fragment (high)</label>
+						</form>
+						
+						<form class="well">
+							<label>Texture Mapping</label>
+							<label class="radio"><input type="radio" name="mapping" value="0">None</label>
+							<label class="radio"><input type="radio" name="mapping" value="1" checked="">Diffuse</label>
+							<label class="radio"><input type="radio" name="mapping" value="2">Height</label>
+							<label class="radio"><input type="radio" name="mapping" value="3">Normal</label>
+							<label class="radio"><input type="radio" name="mapping" value="4">Specular</label>
+						</form>
+						
+						<form class="well">
 							<label>Terrain</label>
-							<label class="checkbox"><input id="vertexNormals" type="checkbox">Vertex Normals</label>
-							<label class="checkbox"><input id="faceNormals" type="checkbox">Face Normals</label>
 							<label class="checkbox"><input id="faces" type="checkbox" checked>Faces</label>
 							<label class="checkbox"><input id="wireframe" type="checkbox">Wireframe</label>
 							<label class="checkbox"><input id="vertices" type="checkbox">Vertices</label>
@@ -60,7 +72,6 @@
 		
 		<script src="js/renderer.js"></script>
 		<script src="js/mesh.js"></script>
-		<script src="js/normals.js"></script>
 		<script src="js/terrain.js"></script>
 	</body>
 </html>

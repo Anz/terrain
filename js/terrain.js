@@ -33,7 +33,7 @@ function editor_init() {
 	
 	// light
 	light = new Light();
-	light.color = [1.0, 0.8, 0.8];
+	light.color = [0.5, 0.5, 0.5];
 	vec3.normalize([-0.2, -25.0, 0.0], light.direction);
 	vec3.scale(light.direction, -1);
 	
@@ -42,7 +42,7 @@ function editor_init() {
 	normalMaterial = new Material([0.0, 0.0, 0.0], [0.5, 0.0, 0.0, 1.0], whiteMap, heightmap);
 	
 	// create terrain
-	terrain = createTerrain(128, 2, 128);
+	terrain = createTerrain2(128, 2, 128);
 	
 	// setup projection matrix
 	projectionMatrix = mat4.create();
@@ -55,13 +55,18 @@ function editor_init() {
 	modelMatrix = mat4.create();
 	
 	// camera
-	camera = {x: 0.0, y: 1.0, z: 3.0, zoom: 1.0};
+	camera = {x: 0.0, y: 100.0, z: -800.0, zoom: 1.0};
 	
 	// terrain
-	model = {x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, sx: 1.0, sy: 1.0, sz: 1.0};
+	model = {x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, sx: 3.0, sy: 3.0, sz: 3.0};
 	
 	// keyboard
 	keys = new Object();
+	
+	// elements
+	elementDepthBuffer = $('#depthbuffer');
+	elementLighting = $('#lighting');
+	elementHeightMap = $('#heightMap');
 }
 
 function update() {
@@ -79,150 +84,178 @@ function update() {
 	gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
 	
 	// depth buffer
-	if ($('#depthbuffer').attr('checked')) {
+	if (elementDepthBuffer.attr('checked')) {
 		gl.enable(gl.DEPTH_TEST);
 	} else {
 		gl.disable(gl.DEPTH_TEST);
 	}
 	
 	// render
-	renderSettings.useLight = typeof($('#lighting').attr('checked')) != 'undefined';
-	renderSettings.useDiffuseMap = typeof($('#diffuseMap').attr('checked')) != 'undefined';
-	renderSettings.useHeightMap = typeof($('#heightMap').attr('checked')) != 'undefined';
+	renderSettings.lighting = $('input[name=lighting]:checked').val();
+	renderSettings.useHeightMap = typeof(elementHeightMap.attr('checked')) != 'undefined';
+	renderSettings.textureMapping = $('input[name=mapping]:checked').val();
 	
-	drawMesh(program, terrain, terrainMaterial, renderSettings, light);
-	if ($('#vertexNormals').attr('checked')) {
-		if (!terrain.normalMesh) {
-			terrain.normalMesh = createNormalMesh(terrain);
-		}
-	
-		drawMesh(program, terrain.normalMesh, normalMaterial, normalRenderSettings, light);
-	}
-	
-	if ($('#faceNormals').attr('checked')) {
-		if (!terrain.faceNormalMesh) {
-			terrain.faceNormalMesh = createFaceNormalMesh(terrain);
-		}
-	
-		drawMesh(program, terrain.faceNormalMesh, normalMaterial, normalRenderSettings, light);
-	}
+	drawMesh(program, terrain.frontMesh, terrainMaterial, renderSettings, light);
+	drawMesh(program, terrain.backMesh, terrainMaterial, renderSettings, light);
+	drawMesh(program, terrain.leftMesh, terrainMaterial, renderSettings, light);
+	drawMesh(program, terrain.rightMesh, terrainMaterial, renderSettings, light);
+	drawMesh(program, terrain.topMesh, terrainMaterial, renderSettings, light);
+	drawMesh(program, terrain.bottomMesh, terrainMaterial, renderSettings, light);
 }
 
 var f = 0.0;
 
-function createTerrain(width, height, depth) {
-	var mesh = createMesh(gl.TRIANGLES, width*height*depth, (2*(width-1)*(height-1)+2*(width-1)*(depth-1)+2*(height-1)*(depth-1))*2); 
+function createTerrain2(width, height, depth) {	
+	var frontMesh = createMesh(gl.TRIANGLES, width*height, 2*2*(width-1)*(height-1));
+	var backMesh = createMesh(gl.TRIANGLES, width*height, 2*2*(width-1)*(height-1));
 	
-	// vertices
-	var index = 0;
+	var leftMesh = createMesh(gl.TRIANGLES, depth*height, 2*2*(depth-1)*(height-1));
+	var rightMesh = createMesh(gl.TRIANGLES, depth*height, 2*2*(depth-1)*(height-1));
 	
-	for (var z = 0; z < depth; z++) {
-		for (var y = 0; y < height; y++) {
-			for (var x = 0; x < width; x++) {
-				// position
-				mesh.vertices[index++] = x - (width-1)/2;
-				mesh.vertices[index++] = y - (height-1)/2;
-				mesh.vertices[index++] = z - (depth-1)/2;
-				
-				// normal
-				if (x <= 0) {
-					mesh.vertices[index++] = -1.0;
-					mesh.vertices[index++] = 0.0;
-					mesh.vertices[index++] = 0.0;
-				} else if (x >= width-1) {
-					mesh.vertices[index++] = 1.0;
-					mesh.vertices[index++] = 0.0;
-					mesh.vertices[index++] = 0.0;
-				} else if (z <= 0) {
-					mesh.vertices[index++] = 0.0;
-					mesh.vertices[index++] = 0.0;
-					mesh.vertices[index++] = -1.0;
-				} else if (z >= depth-1) {
-					mesh.vertices[index++] = 0.0;
-					mesh.vertices[index++] = 0.0;
-					mesh.vertices[index++] = 1.0;
-				} else if (y <= 0) {
-					mesh.vertices[index++] = 0.0;
-					mesh.vertices[index++] = -1.0;
-					mesh.vertices[index++] = -1.0;
-				} else if (y >= height-1) {
-					mesh.vertices[index++] = 0.0;
-					mesh.vertices[index++] = 1.0;
-					mesh.vertices[index++] = 0.0;
-				}  else {
-					mesh.vertices[index++] = 0.0;
-					mesh.vertices[index++] = 0.0;
-					mesh.vertices[index++] = 0.0;
-				}
-				
-				// texture coordinates
-				mesh.vertices[index++] = 1.0/depth*z;
-				mesh.vertices[index++] = 1.0/width*x;
-			}
-		}
-	}
-	
-	// indices
-	var index = 0;
-	
-	function mapping_faces(x, y, linex, liney, offset1,  offset2,  offset3,  offset4, flip) {
-		function vertex(v) {
-			return v[0] + v[1]*width + v[2]*width*height;
-		}
-	
-		var cursor = vec3.create();
-	
-		for (var i=0; i<liney-1; i++) {
-			vec3.scale(y, i, cursor);
+	var topMesh = createMesh(gl.TRIANGLES, depth*width, 2*2*(depth-1)*(width-1));
+	var bottomMesh = createMesh(gl.TRIANGLES, depth*width, 2*2*(depth-1)*(width-1));
+
+	function vertex(mesh, index, position, normal, textureCoord) {
+		// position
+		mesh.vertices[index+0] = position[0];
+		mesh.vertices[index+1] = position[1];
+		mesh.vertices[index+2] = position[2];
 		
-			for (var j=0; j<linex-1; j++) {
-				var v1 = vec3.create();
-				var v2 = vec3.create();
-				var v3 = vec3.create();
-				var v4 = vec3.create();
+		// texture coordinates
+		mesh.vertices[index+3] = textureCoord[0];
+		mesh.vertices[index+4] = textureCoord[1];
+	}
+	
+	function index(mesh, index, v1, v2, v3) {
+		// position
+		mesh.indices[index+0] = v1;
+		mesh.indices[index+1] = v2;
+		mesh.indices[index+2] = v3;
+	}
+	
+	var frontNormal = [0.0, 0.0, -1.0];
+	
+	var backVertexStart = width*height*5;
+	var backIndexStart = (width-1)*(height-1)*6;
+	var backNormal = [0.0, 0.0, 1.0];
+	
+	var leftVertexStart = 2*width*height*5;
+	var leftIndexStart = 2*(width-1)*(height-1)*6;
+	var leftNormal = [-1.0, 0.0, 0.0];
+	
+	var rightVertexStart = 2*width*height*5 + depth*height*5;
+	var rightIndexStart = 2*(width-1)*(height-1)*6 + (depth-1)*(height-1)*6;
+	var rightNormal = [1.0, 0.0, 0.0];
+	
+	var topVertexStart = 2*width*height*5 + 2*depth*height*5;
+	var topIndexStart = 2*(width-1)*(height-1)*6 + 2*(height-1)*(depth-1)*6;
+	var topNormal = [0.0, 1.0, 0.0];
+	
+	var bottomVertexStart = 2*width*height*5 + 2*depth*height*5 + width*depth*5;
+	var bottomIndexStart = 2*(width-1)*(height-1)*6 + 2*(depth-1)*(height-1)*6 + (width-1)*(depth-1)*6;
+	var bottomNormal = [0.0, -1.0, 0.0];
+
+	var max = Math.max(depth, Math.max(width, height));
+
+	for (var i=0; i<max; i++) {
+		for (var j=0; j<max; j++) {		
+			// front
+			if (i < height && j < width) {
+				var offset = i*width + j;
+			
+				vertex(frontMesh, 5*offset, [j-(width-1)/2.0, i-(height-1)/2.0, -(depth-1)/2.0], frontNormal, [1.0/width*j, 0.0]);
 				
-				vec3.add(cursor, offset1, v1);
-				vec3.add(cursor, offset2, v2);
-				vec3.add(cursor, offset3, v3);
-				vec3.add(cursor, offset4, v4);
-				
-				if (!flip) {
-					mesh.indices[index++] = vertex(v1);
-					mesh.indices[index++] = vertex(v2);
-					mesh.indices[index++] = vertex(v3);
-					mesh.indices[index++] = vertex(v2);
-					mesh.indices[index++] = vertex(v4);
-					mesh.indices[index++] = vertex(v3);
-				} else {
-					mesh.indices[index++] = vertex(v1);
-					mesh.indices[index++] = vertex(v3);
-					mesh.indices[index++] = vertex(v2);					
-					mesh.indices[index++] = vertex(v2);
-					mesh.indices[index++] = vertex(v3);
-					mesh.indices[index++] = vertex(v4);							
+				if (i > 0 && j > 0) {
+					var lastLine = offset - width;
+					index(frontMesh, 6*offset, lastLine, lastLine - 1, offset - 1);
+					index(frontMesh, 6*offset+3, lastLine, offset - 1, offset);
 				}
-				
-				vec3.add(cursor, x);
 			}
+			
+			// back
+			if (i < height && j < width) {
+				var offset = i*width + j;
+			
+				vertex(backMesh, 5*offset, [j-(width-1)/2.0, i-(height-1)/2.0, (depth-1)/2.0], backNormal, [1.0*width*j, 1.0]);
+				
+				if (i > 0 && j > 0) {
+					var lastLine = offset - width;
+					index(backMesh, 6*offset, lastLine, offset - 1, lastLine - 1);
+					index(backMesh, 6*offset+3, lastLine, offset, offset - 1);
+				}
+			}
+			
+			// left
+			if (i < height && j < depth) {
+				var offset = i*depth + j;
+			
+				vertex(leftMesh, 5*offset, [-(width-1)/2.0, i-(height-1)/2.0, j-(depth-1)/2.0], leftNormal, [0.0, 1.0/depth*j]);
+				
+				if (i > 0 && j > 0) {
+					var lastLine = offset - depth;
+					index(leftMesh, 6*offset, lastLine, offset - 1, lastLine - 1);
+					index(leftMesh, 6*offset+3, lastLine, offset, offset - 1);
+				}
+			}
+			
+			// right
+			if (i < height && j < depth) {
+				var offset = i*depth + j;
+			
+				vertex(rightMesh, 5*offset, [(width-1)/2.0, i-(height-1)/2.0, j-(depth-1)/2.0], rightNormal, [1.0, 1.0/depth*j]);
+				
+				if (i > 0 && j > 0) {
+					var lastLine = offset - depth;
+					index(rightMesh, 6*offset, lastLine, lastLine - 1, offset - 1);
+					index(rightMesh, 6*offset+3, lastLine, offset - 1, offset);
+				}
+			}
+			
+			// top
+			if (i < depth && j < width) {
+				var offset = i*width + j;
+			
+				vertex(topMesh, 5*offset, [j-(width-1)/2.0, (height-1)/2.0, i-(depth-1)/2.0], topNormal, [1.0/width*j, 1.0/depth*i]);
+				
+				if (i > 0 && j > 0) {
+					var lastLine = offset - width;
+					index(topMesh, 6*offset, lastLine, lastLine - 1, offset - 1);
+					index(topMesh, 6*offset+3, lastLine, offset - 1, offset);
+				}
+			}
+			
+			// bottom
+			if (i < depth && j < width) {
+				var offset = i*width + j;
+			
+				vertex(bottomMesh, 5*offset, [j-(width-1)/2.0, -(height-1)/2.0, i-(depth-1)/2.0], bottomNormal, [1.0/width*j, 1.0/depth*i]);
+				
+				if (i > 0 && j > 0) {
+					var lastLine = offset - width;
+					index(bottomMesh, 6*offset, lastLine, offset - 1, lastLine - 1);
+					index(bottomMesh, 6*offset+3, lastLine, offset, offset - 1);
+				}
+			}
+		
 		}
 	}
 	
-	// front
-	mapping_faces([1,0,0], [0,1,0], width, height, [0,0,0], [1,0,0], [0,1,0], [1,1,0], false);
-	// back
-	mapping_faces([1,0,0], [0,1,0], width, height, [0,0,depth-1], [1,0,depth-1], [0,1,depth-1], [1,1,depth-1], true);
-	// left
-	mapping_faces([0,1,0], [0,0,1], height, depth, [0,0,0], [0,1,0], [0,0,1], [0,1,1], false);
-	// right
-	mapping_faces([0,1,0], [0,0,1], height, depth, [width-1,0,0], [width-1,1,0], [width-1,0,1], [width-1,1,1], true);
-	// bottom
-	mapping_faces([1,0,0], [0,0,1], width, depth, [0,0,0], [1,0,0], [0,0,1], [1,0,1], true);	
-	// top
-	mapping_faces([1,0,0], [0,0,1], width, depth, [0,height-1,0], [1,height-1,0], [0,height-1,1], [1,height-1,1], false);	
+	frontMesh.init();
+	backMesh.init();
+	leftMesh.init();
+	rightMesh.init();
+	topMesh.init();
+	bottomMesh.init();
 	
-	mesh.init();
+	var terrain = new Object();
+	terrain.frontMesh = frontMesh;
+	terrain.backMesh = backMesh;
+	terrain.leftMesh = leftMesh;
+	terrain.rightMesh = rightMesh;
+	terrain.topMesh = topMesh;
+	terrain.bottomMesh = bottomMesh;
 	
-	return mesh;
+	return terrain;
 }
 
 

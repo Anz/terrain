@@ -1,9 +1,9 @@
 precision mediump float;
 
 struct RenderSettings {
-	bool useLight;
-	bool useDiffuseMap;
+	int lighting;
 	bool useHeightMap;
+	int textureMapping;
 };
 
 struct Light {
@@ -20,28 +20,36 @@ uniform RenderSettings uRenderSettings;
 uniform Light uLight;
 uniform Material uMaterial;
 
-varying vec3 vVertexNormal;
-varying mat3 vNormalMatrix;
-
+varying vec3 vTransformedNormal;
 varying vec2 vTextureCoord;
+varying vec3 vLightWeighting;
 
 uniform sampler2D uDiffuseMap;
 uniform sampler2D uHeightMap;
 
-void main() {
-	vec4 texel = vec4(1.0, 1.0, 1.0, 1.0);
-	float direction = dot(normalize(vVertexNormal), vec3(0.0, 1.0, 0.0));
-	if (uRenderSettings.useDiffuseMap && direction > 0.0) {
-		texel = texture2D(uDiffuseMap, vTextureCoord);
+void main() {	
+	vec3 normal = normalize(vTransformedNormal);
+
+	vec4 fragmentColor;
+	
+	vec3 lightWeighting = vec3(1.0, 1.0, 1.0);
+	if (uRenderSettings.lighting == 2) {	
+		float directionalLightWeighting = max(dot(normal, uLight.direction), 0.0);
+		lightWeighting = uMaterial.ambientColor + uLight.color*directionalLightWeighting;
+	} else if (uRenderSettings.lighting == 1) {	
+		lightWeighting = vLightWeighting;
 	}
 	
-	vec3 vLightWeighting = vec3(1.0, 1.0, 1.0);
-	if (uRenderSettings.useLight) {
-		vec3 transformedNormal = vNormalMatrix * normalize(vVertexNormal);
-		float directionalLightWeighting = max(dot(transformedNormal, uLight.direction), 0.0);
-		vLightWeighting = uMaterial.ambientColor + uLight.color*directionalLightWeighting;
+	if (uRenderSettings.textureMapping == 0) {
+		fragmentColor = vec4(0.3, 0.3, 0.3, 1.0);
+	} else if (uRenderSettings.textureMapping == 2) {
+		fragmentColor = texture2D(uHeightMap, vTextureCoord);
+	}  else if (uRenderSettings.textureMapping == 3) {
+		fragmentColor = vec4((normal+vec3(1.0, 0.0, 1.0))/2.0, 1.0);
+	} else {
+		fragmentColor = texture2D(uDiffuseMap, vTextureCoord);
 	}
 	
 
-	gl_FragColor = vec4(uMaterial.diffuseColor.rgb * vLightWeighting, uMaterial.diffuseColor.a) * texel;
+	gl_FragColor = vec4(fragmentColor.rgb * lightWeighting, fragmentColor.a);
 }

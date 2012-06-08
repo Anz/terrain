@@ -1,5 +1,5 @@
 function createMesh(type, numVertices, numFaces) {
-	var vertexSize = 8;
+	var vertexSize = 5;
 	var faceSize = 3;
 	switch (type) {
 		case gl.POINTS: faceSize = 1; break;
