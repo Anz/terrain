@@ -96,7 +96,7 @@ function createTerrain2(width, height, depth) {
 	var topMesh = createMesh(gl.TRIANGLES, depth*width, 2*2*(depth-1)*(width-1));
 	var bottomMesh = createMesh(gl.TRIANGLES, depth*width, 2*2*(depth-1)*(width-1));
 
-	function vertex(mesh, index, position, normal, textureCoord) {
+	function vertex(mesh, index, position, textureCoord) {
 		// position
 		mesh.vertices[index+0] = position[0];
 		mesh.vertices[index+1] = position[1];
@@ -113,28 +113,21 @@ function createTerrain2(width, height, depth) {
 		mesh.indices[index+1] = v2;
 		mesh.indices[index+2] = v3;
 	}
-	
-	var frontNormal = [0.0, 0.0, -1.0];
-	
+		
 	var backVertexStart = width*height*5;
 	var backIndexStart = (width-1)*(height-1)*6;
-	var backNormal = [0.0, 0.0, 1.0];
 	
 	var leftVertexStart = 2*width*height*5;
 	var leftIndexStart = 2*(width-1)*(height-1)*6;
-	var leftNormal = [-1.0, 0.0, 0.0];
 	
 	var rightVertexStart = 2*width*height*5 + depth*height*5;
 	var rightIndexStart = 2*(width-1)*(height-1)*6 + (depth-1)*(height-1)*6;
-	var rightNormal = [1.0, 0.0, 0.0];
 	
 	var topVertexStart = 2*width*height*5 + 2*depth*height*5;
 	var topIndexStart = 2*(width-1)*(height-1)*6 + 2*(height-1)*(depth-1)*6;
-	var topNormal = [0.0, 1.0, 0.0];
 	
 	var bottomVertexStart = 2*width*height*5 + 2*depth*height*5 + width*depth*5;
 	var bottomIndexStart = 2*(width-1)*(height-1)*6 + 2*(depth-1)*(height-1)*6 + (width-1)*(depth-1)*6;
-	var bottomNormal = [0.0, -1.0, 0.0];
 
 	var max = Math.max(depth, Math.max(width, height));
 
@@ -144,7 +137,7 @@ function createTerrain2(width, height, depth) {
 			if (i < height && j < width) {
 				var offset = i*width + j;
 			
-				vertex(frontMesh, 5*offset, [j-(width-1)/2.0, i-(height-1)/2.0, -(depth-1)/2.0], frontNormal, [1.0/width*j, 0.0]);
+				vertex(frontMesh, 5*offset, [j-(width-1)/2.0, i-(height-1)/2.0, -(depth-1)/2.0], [1.0/(width-1)*j, 0.0]);
 				
 				if (i > 0 && j > 0) {
 					var lastLine = offset - width;
@@ -157,7 +150,7 @@ function createTerrain2(width, height, depth) {
 			if (i < height && j < width) {
 				var offset = i*width + j;
 			
-				vertex(backMesh, 5*offset, [j-(width-1)/2.0, i-(height-1)/2.0, (depth-1)/2.0], backNormal, [1.0*width*j, 1.0]);
+				vertex(backMesh, 5*offset, [j-(width-1)/2.0, i-(height-1)/2.0, (depth-1)/2.0], [1.0/(width-1)*j, 1.0]);
 				
 				if (i > 0 && j > 0) {
 					var lastLine = offset - width;
@@ -170,7 +163,7 @@ function createTerrain2(width, height, depth) {
 			if (i < height && j < depth) {
 				var offset = i*depth + j;
 			
-				vertex(leftMesh, 5*offset, [-(width-1)/2.0, i-(height-1)/2.0, j-(depth-1)/2.0], leftNormal, [0.0, 1.0/depth*j]);
+				vertex(leftMesh, 5*offset, [-(width-1)/2.0, i-(height-1)/2.0, j-(depth-1)/2.0], [0.0, 1.0/(depth-1)*j]);
 				
 				if (i > 0 && j > 0) {
 					var lastLine = offset - depth;
@@ -183,7 +176,7 @@ function createTerrain2(width, height, depth) {
 			if (i < height && j < depth) {
 				var offset = i*depth + j;
 			
-				vertex(rightMesh, 5*offset, [(width-1)/2.0, i-(height-1)/2.0, j-(depth-1)/2.0], rightNormal, [1.0, 1.0/depth*j]);
+				vertex(rightMesh, 5*offset, [(width-1)/2.0, i-(height-1)/2.0, j-(depth-1)/2.0], [1.0, 1.0/(depth-1)*j]);
 				
 				if (i > 0 && j > 0) {
 					var lastLine = offset - depth;
@@ -196,7 +189,7 @@ function createTerrain2(width, height, depth) {
 			if (i < depth && j < width) {
 				var offset = i*width + j;
 			
-				vertex(topMesh, 5*offset, [j-(width-1)/2.0, (height-1)/2.0, i-(depth-1)/2.0], topNormal, [1.0/width*j, 1.0/depth*i]);
+				vertex(topMesh, 5*offset, [j-(width-1)/2.0, (height-1)/2.0, i-(depth-1)/2.0], [1.0/(width-1)*j, 1.0/(depth-1)*i]);
 				
 				if (i > 0 && j > 0) {
 					var lastLine = offset - width;
@@ -209,7 +202,7 @@ function createTerrain2(width, height, depth) {
 			if (i < depth && j < width) {
 				var offset = i*width + j;
 			
-				vertex(bottomMesh, 5*offset, [j-(width-1)/2.0, -(height-1)/2.0, i-(depth-1)/2.0], bottomNormal, [1.0/width*j, 1.0/depth*i]);
+				vertex(bottomMesh, 5*offset, [j-(width-1)/2.0, -(height-1)/2.0, i-(depth-1)/2.0], [0.0, 0.0]);
 				
 				if (i > 0 && j > 0) {
 					var lastLine = offset - width;
