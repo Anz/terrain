@@ -38,7 +38,7 @@ function editor_init() {
 	vec3.scale(light.direction, -1);
 	
 	// material
-	terrainMaterial = new Material([0.2, 0.2, 0.2], [0.3, 0.3, 0.3, 1.0], diffuse_grass, heightmap);
+	terrainMaterial = new Material([0.2, 0.2, 0.2], 1.0, diffuse_grass, heightmap);
 	
 	// create terrain
 	terrain = createTerrain2(128, 2, 128);
@@ -61,6 +61,8 @@ function editor_init() {
 	
 	// keyboard
 	keys = new Object();
+	
+	//model.ry = Math.PI/4;
 }
 
 function update() {
@@ -277,6 +279,11 @@ $('input[name=lighting]').change(function() {
 // texture mapping event listener
 $('input[name=mapping]').change(function() {
   renderSettings.textureMapping = $(this).val();
+});
+
+// shininess event listener
+$('input[name=shininess]').change(function() {
+  terrainMaterial.shininess = $(this).val();
 });
 
 depthbuffer = true;

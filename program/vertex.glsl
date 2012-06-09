@@ -1,5 +1,5 @@
 struct RenderSettings {
-	int lighting;
+	bool lighting;
 	int textureMapping;
 };
 
@@ -10,7 +10,7 @@ struct Light {
 
 struct Material {
 	vec3 ambientColor;
-	vec4 diffuseColor;
+	float shininess;
 };
 
 attribute vec3 aVertexPosition;
@@ -31,9 +31,9 @@ uniform Material uMaterial;
 
 
 varying float vHeight;
+varying vec4 vVertexPosition;
 varying vec3 vTransformedNormal;
 varying vec2 vTextureCoord;
-varying vec3 vLightWeighting;
 
 vec3 calcNormalFromHeightMap() {
 	vec2 size = vec2(2.0,0.0);
@@ -59,7 +59,6 @@ vec3 calcNormalFromHeightMap() {
 void main() {
 		float height = aVertexPosition.y;
 		vHeight = aVertexPosition.y;
-		vec4 position;
 		
 		if (height >= 0.0) {
 			vec4 texel = texture2D(uHeightMap, aTextureCoord);
@@ -68,12 +67,9 @@ void main() {
 		
 		vTransformedNormal = uNormalMatrix * calcNormalFromHeightMap();
 			
-		position =  uViewMatrix*uModelMatrix*vec4(aVertexPosition.x, height, aVertexPosition.z, 1.0);
+		vVertexPosition =  uViewMatrix*uModelMatrix*vec4(aVertexPosition.x, height, aVertexPosition.z, 1.0);
 		
-		gl_Position = uProjectionMatrix*position;
-		
-		float directionalLightWeighting = max(dot(vTransformedNormal, (normalize(uModelMatrix * vec4(uLight.direction, 1.0))).xyz), 0.0);
-		vLightWeighting = uMaterial.ambientColor + uLight.color*directionalLightWeighting;
+		gl_Position = uProjectionMatrix*vVertexPosition;
 		
 		vTextureCoord = aTextureCoord;
 		gl_PointSize = 3.0;

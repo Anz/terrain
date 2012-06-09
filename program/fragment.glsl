@@ -1,7 +1,7 @@
 precision mediump float;
 
 struct RenderSettings {
-	int lighting;
+	bool lighting;
 	int textureMapping;
 };
 
@@ -12,7 +12,7 @@ struct Light {
 
 struct Material {
 	vec3 ambientColor;
-	vec4 diffuseColor;
+	float shininess;
 };
 
 uniform RenderSettings uRenderSettings;
@@ -20,9 +20,9 @@ uniform Light uLight;
 uniform Material uMaterial;
 
 varying float vHeight;
+varying vec4 vVertexPosition;
 varying vec3 vTransformedNormal;
 varying vec2 vTextureCoord;
-varying vec3 vLightWeighting;
 
 uniform mat4 uProjectionMatrix;
 uniform mat4 uViewMatrix;
@@ -32,6 +32,10 @@ uniform vec2 uPixelSize;
 
 uniform sampler2D uDiffuseMap;
 uniform sampler2D uHeightMap;
+
+// function protypes
+float getDiffuseLightWeight(vec3 normal, vec3 direction);
+float getSpecularLightWeight(vec3 position, vec3 normal, vec3 lightDirection, float shininess);
 
 void main() {
 	if (vHeight < 0.0) {
@@ -44,12 +48,15 @@ void main() {
 	vec4 fragmentColor;
 	
 	vec3 lightWeighting = vec3(1.0, 1.0, 1.0);
-	if (uRenderSettings.lighting == 2) {	
-		float directionalLightWeighting = max(dot(normal, (normalize(uViewMatrix*vec4(uLight.direction, 1.0))).xyz), 0.0);
-		lightWeighting = uMaterial.ambientColor + uLight.color*directionalLightWeighting;
-	} else if (uRenderSettings.lighting == 1) {	
-		lightWeighting = vLightWeighting;
-	}
+	//if (uRenderSettings.lighting) {
+		vec3 lightDirection = (normalize(uViewMatrix*vec4(uLight.direction, 1.0))).xyz;
+		//vec3 lightDirection = uLight.direction;
+		float diffuseLightWeight = getDiffuseLightWeight(normal, lightDirection);
+		float specularLightWeight = getSpecularLightWeight(vVertexPosition.xyz, normal, lightDirection, uMaterial.shininess);
+		
+		
+		lightWeighting = uMaterial.ambientColor + vec3(1.0, 1.0, 0.8) * specularLightWeight + uLight.color*diffuseLightWeight;
+	//}
 	
 	if (uRenderSettings.textureMapping == 0) {
 		// none
@@ -85,4 +92,15 @@ void main() {
 	}
 	
 	gl_FragColor = vec4(fragmentColor.rgb * lightWeighting, fragmentColor.a);
+}
+
+float getDiffuseLightWeight(vec3 normal, vec3 direction) {
+	return max(dot(normal, direction), 0.0);
+}
+
+float getSpecularLightWeight(vec3 position, vec3 normal, vec3 lightDirection, float shininess) {
+	vec3 eyeDirection = normalize(-position);
+	vec3 reflectionDirection = reflect(-lightDirection, normal);
+
+	return pow(max(dot(reflectionDirection, eyeDirection), 0.0), shininess);
 }

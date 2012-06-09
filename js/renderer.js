@@ -1,5 +1,5 @@
 ﻿function RenderSettings() {
-	this.lighting = 2;
+	this.lighting = true;
 	this.textureMapping = 1;
 }
 
@@ -8,9 +8,9 @@ function Light() {
 	this.color = vec3.create();
 }
 
-function Material(ambientColor, diffuseColor, diffuseMap, heightMap) {
+function Material(ambientColor, shininess, diffuseMap, heightMap) {
 	this.ambientColor = ambientColor;
-	this.diffuseColor = diffuseColor;
+	this.shininess = shininess;
 	this.diffuseMap = diffuseMap;
 	this.heightMap = heightMap;
 }
@@ -60,7 +60,7 @@ function drawMesh(program, mesh, material, renderSettings, light) {
 	gl.uniform3fv(program.uLight.color, light.color);
 	
 	// material
-	gl.uniform4fv(program.uMaterial.diffuseColor, material.diffuseColor);
+	gl.uniform1f(program.uMaterial.shininess, material.shininess);
 	gl.uniform3fv(program.uMaterial.ambientColor, material.ambientColor);
 	
 	gl.uniform1i(program.uDiffuseMap, 0);
@@ -219,7 +219,7 @@ function load_shader(vertexURL, fragmentURL) {
 			// material
 			program.uMaterial = new Object();
 			program.uMaterial.ambientColor = gl.getUniformLocation(program, 'uMaterial.ambientColor');
-			program.uMaterial.diffuseColor = gl.getUniformLocation(program, 'uMaterial.diffuseColor');
+			program.uMaterial.shininess = gl.getUniformLocation(program, 'uMaterial.shininess');
 			program.uDiffuseMap = gl.getUniformLocation(program, 'uDiffuseMap');
 			program.uHeightMap = gl.getUniformLocation(program, 'uHeightMap');
 			
