@@ -48,8 +48,6 @@ vec3 calcNormalFromHeightMap() {
     float s21 = (t21.x+t21.y+t21.z)/3.0*100.0;
     float s10 = (t10.x+t10.y+t10.z)/3.0*100.0;
     float s12 = (t12.x+t12.y+t12.z)/3.0*100.0;
-    //vec3 va = normalize(vec3(size.xy,s21-s11));
-    //vec3 vb = normalize(vec3(size.yx,s12-s10));
 	
 	vec3 va = normalize(vec3(size.x, s21-s01, size.y));
 	vec3 vb = normalize(vec3(size.y, s12-s10, -size.x));
@@ -82,5 +80,4 @@ void main() {
 		
 		vTextureCoord = aTextureCoord;
 		gl_PointSize = 3.0;
-
 }

@@ -41,32 +41,35 @@ void main() {
 	}
 	
 	if (uRenderSettings.textureMapping == 0) {
+		// none
 		fragmentColor = vec4(0.3, 0.3, 0.3, 1.0);
 	} else if (uRenderSettings.textureMapping == 2) {
+		// height mapping
 		fragmentColor = texture2D(uHeightMap, vTextureCoord);
 	} else if (uRenderSettings.textureMapping == 3) {
+		// normal mapping
 		fragmentColor = vec4((normal+vec3(1.0, 0.0, 1.0))/2.0, 1.0);
 	} else if (uRenderSettings.textureMapping == 5) {
+		// light mapping
 		fragmentColor = vec4(1.0, 1.0, 1.0, 1.0);
 	} else {
+		// diffuse mapping
 		vec4 heightmap = texture2D(uHeightMap, vTextureCoord);
 		float height = (heightmap.r + heightmap.g + heightmap.b) / 3.0;
 				vec2 coord = vTextureCoord/2.0;
 		float steil = dot(normal, vec3(0.0, 1.0, 0.0));
 		
-		float grassFactor = 0.2;
-		float snowFactor = max(height-0.3, 0.0)*10.0;
-		float sandFactor = max(0.06-height, 0.0)*20.0;
-		float clipFactor = max(1.0-abs(steil), 0.0)*2.0;
+		if (height > 0.35) {
+			fragmentColor = texture2D(uDiffuseMap, coord+vec2(0.5, 0.0));
+		} else if (height < 0.02) {
+			fragmentColor = texture2D(uDiffuseMap, coord+vec2(0.5, 0.5));
+		} else {
+			fragmentColor = texture2D(uDiffuseMap, coord);
+		}
 		
-		vec4 grass = texture2D(uDiffuseMap, coord);
-		vec4 snow = texture2D(uDiffuseMap, coord+vec2(0.5, 0.0));
-		vec4 clip = texture2D(uDiffuseMap, coord+vec2(0.0, 0.5));
-		vec4 sand = texture2D(uDiffuseMap, coord+vec2(0.5, 0.5));
-				
-	
-		fragmentColor = normalize(grassFactor*grass+snowFactor*snow+sandFactor*sand+clipFactor*clip);
-		//fragmentColor = grass;
+		float factor = min(max(1.0-steil, 0.0)*2.0, 1.0);
+		
+		fragmentColor = fragmentColor * (1.0-factor) + texture2D(uDiffuseMap, coord+vec2(0.0, 0.5)) * factor;
 	}
 	
 	gl_FragColor = vec4(fragmentColor.rgb * lightWeighting, fragmentColor.a);
