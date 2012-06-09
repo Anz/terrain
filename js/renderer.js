@@ -23,7 +23,7 @@ function drawMesh(program, mesh, material, renderSettings, light) {
 	
 	gl.useProgram(program);
 	
-	f += 0.001;
+	//f += 0.001;
 	//f = Math.PI/4;
 	
 	// view matrix

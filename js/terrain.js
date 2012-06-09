@@ -45,7 +45,7 @@ function editor_init() {
 	
 	// setup projection matrix
 	projectionMatrix = mat4.create();
-	mat4.perspective(45, canvas.width/canvas.height, 0.001, 100000.0, projectionMatrix);
+	mat4.perspective(45, canvas.width/canvas.height, 0.01, 10000.0, projectionMatrix);
 	
 	// setup view matrix
 	viewMatrix = mat4.create();
@@ -69,6 +69,7 @@ function editor_init() {
 }
 
 function update() {
+	f += 0.001;
 
 	requestAnimationFrame(update);
 	
@@ -83,7 +84,7 @@ function update() {
 	gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
 	
 	// depth buffer
-	if (elementDepthBuffer.attr('checked')) {
+	if (true || elementDepthBuffer.attr('checked')) {
 		gl.enable(gl.DEPTH_TEST);
 	} else {
 		gl.disable(gl.DEPTH_TEST);
