@@ -19,22 +19,33 @@ uniform RenderSettings uRenderSettings;
 uniform Light uLight;
 uniform Material uMaterial;
 
-varying vec4 vVertexPosition;
+varying float vHeight;
 varying vec3 vTransformedNormal;
 varying vec2 vTextureCoord;
 varying vec3 vLightWeighting;
 
+uniform mat4 uProjectionMatrix;
+uniform mat4 uViewMatrix;
+uniform mat4 uModelMatrix;
+uniform mat3 uNormalMatrix;
+uniform vec2 uPixelSize;
+
 uniform sampler2D uDiffuseMap;
 uniform sampler2D uHeightMap;
 
-void main() {	
+void main() {
+	if (vHeight < 0.0) {
+		gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+		return;
+	}
+
 	vec3 normal = normalize(vTransformedNormal);
 
 	vec4 fragmentColor;
 	
 	vec3 lightWeighting = vec3(1.0, 1.0, 1.0);
 	if (uRenderSettings.lighting == 2) {	
-		float directionalLightWeighting = max(dot(normal, uLight.direction), 0.0);
+		float directionalLightWeighting = max(dot(normal, (normalize(uViewMatrix*vec4(uLight.direction, 1.0))).xyz), 0.0);
 		lightWeighting = uMaterial.ambientColor + uLight.color*directionalLightWeighting;
 	} else if (uRenderSettings.lighting == 1) {	
 		lightWeighting = vLightWeighting;
@@ -57,8 +68,9 @@ void main() {
 		vec4 heightmap = texture2D(uHeightMap, vTextureCoord);
 		float height = (heightmap.r + heightmap.g + heightmap.b) / 3.0;
 				vec2 coord = vTextureCoord/2.0;
-		float steil = dot(normal, vec3(0.0, 1.0, 0.0));
 		
+		float steil = dot(normal, vec3(0.0, 1.0, 0.0));
+	
 		if (height > 0.35) {
 			fragmentColor = texture2D(uDiffuseMap, coord+vec2(0.5, 0.0));
 		} else if (height < 0.02) {

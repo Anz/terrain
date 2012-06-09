@@ -1,6 +1,6 @@
 ﻿function RenderSettings() {
-	this.lighting = 0;
-	this.textureMapping = 0;
+	this.lighting = 2;
+	this.textureMapping = 1;
 }
 
 function Light() {
@@ -22,29 +22,19 @@ function drawMesh(program, mesh, material, renderSettings, light) {
 	}
 	
 	gl.useProgram(program);
-	
-	//f += 0.001;
-	//f = Math.PI/4;
-	
+		
 	// view matrix
 	mat4.identity(viewMatrix);
-	mat4.translate(viewMatrix, [-camera.x, -camera.y, camera.z]);
-	mat4.translate(viewMatrix, [0.0, 0.0, -7.0]);
-	//mat4.rotate(viewMatrix, f*Math.PI/2, [0, 1, 0]);
-	mat4.scale(viewMatrix, [camera.zoom, camera.zoom, camera.zoom]);
+	if (camera.x != 0 || camera.y != 0 || camera.z != 0) mat4.translate(viewMatrix, [-camera.x, -camera.y, camera.z]);
+	if (camera.zoom != 1) mat4.scale(viewMatrix, [camera.zoom, camera.zoom, camera.zoom]);
 	
 	// model matrix
 	mat4.identity(modelMatrix);
 	mat4.translate(modelMatrix, [model.x, model.y, model.z]);
-	mat4.rotate(modelMatrix, model.rx, [1, 0, 0]);
-	mat4.rotate(modelMatrix, model.ry, [0, 1, 0]);
-	mat4.rotate(modelMatrix, model.rz, [0, 0, 1]);
-	mat4.rotate(modelMatrix, f*Math.PI/2, [0, 1, 0]);
-	mat4.scale(modelMatrix, [model.sx, model.sy, -model.sz]);
-	
-	// model view matrix
-	var modelViewMatrix = mat4.create();
-	mat4.multiply(viewMatrix, modelMatrix, modelViewMatrix);
+	if (model.rx != 0) mat4.rotate(modelMatrix, model.rx, [1, 0, 0]);
+	if (model.ry != 0) mat4.rotate(modelMatrix, model.ry, [0, 1, 0]);
+	if (model.rz != 0) mat4.rotate(modelMatrix, model.rz, [0, 0, 1]);
+	if (model.sx != 1 || model.sy != 1 || model.sz != 1) mat4.scale(modelMatrix, [model.sx, model.sy, -model.sz]);
 	
 	// normal matrix
 	var normalMatrix = mat3.create();
@@ -53,7 +43,8 @@ function drawMesh(program, mesh, material, renderSettings, light) {
 	
 	// uniforms
 	gl.uniformMatrix4fv(program.uProjectionMatrix, false, projectionMatrix);
-	gl.uniformMatrix4fv(program.uViewMatrix, false, modelViewMatrix);
+	gl.uniformMatrix4fv(program.uViewMatrix, false, viewMatrix);
+	gl.uniformMatrix4fv(program.uModelMatrix, false, modelMatrix);
 	gl.uniformMatrix3fv(program.uNormalMatrix, false, normalMatrix);
 	gl.uniform2f(program.uPixelSize, 1.0/material.heightMap.width, 1.0/material.heightMap.height);
 	
@@ -84,8 +75,8 @@ function drawMesh(program, mesh, material, renderSettings, light) {
 	gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vbo);
 	
 	// vertex position
-	gl.enableVertexAttribArray(program.vertexPosition);
-	gl.vertexAttribPointer(program.vertexPosition, 3, gl.FLOAT, false, mesh.vertexSize*4, 0);
+	gl.enableVertexAttribArray(program.aVertexPosition);
+	gl.vertexAttribPointer(program.aVertexPosition, 3, gl.FLOAT, false, mesh.vertexSize*4, 0);
 	
 	// vertex texture coordinates
 	gl.enableVertexAttribArray(program.aTextureCoord);
@@ -95,10 +86,10 @@ function drawMesh(program, mesh, material, renderSettings, light) {
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ibo);
 	
 	// draw the buffer
-	if (mesh.type == gl.POINTS || mesh.type == gl.LINES || $('#faces').attr('checked')) {	
+	//if (mesh.type == gl.POINTS || mesh.type == gl.LINES || $('#faces').attr('checked')) {	
 		gl.drawElements(mesh.type, mesh.indices.length, gl.UNSIGNED_SHORT, 0);
-	} 
-	if (mesh.type != gl.LINES && $('#wireframe').attr('checked')) {
+	//} 
+	/*if (mesh.type != gl.LINES && $('#wireframe').attr('checked')) {
 	
 		gl.uniform1i(program.uRenderSettings.useLight, false);
 		gl.uniform1i(program.uRenderSettings.useDiffuseMap, false);
@@ -120,7 +111,7 @@ function drawMesh(program, mesh, material, renderSettings, light) {
 	
 		gl.uniform4f(program.uDiffuseColor, 0.0, 1.0, 0.0,1.0);
 		gl.drawElements(gl.POINTS, mesh.indices.length, gl.UNSIGNED_SHORT, 0);
-	}
+	}*/
 }
 
 function load_texture(url){	
@@ -204,13 +195,14 @@ function load_shader(vertexURL, fragmentURL) {
 			gl.useProgram(program);
 			
 			// attributes
-			program.vertexPosition = gl.getAttribLocation(program, 'aVertexPosition');
+			program.aVertexPosition = gl.getAttribLocation(program, 'aVertexPosition');
 			program.aVertexNormal = gl.getAttribLocation(program, 'aVertexNormal');
 			program.aTextureCoord = gl.getAttribLocation(program, 'aTextureCoord');
 			
 			// uniforms
 			program.uProjectionMatrix = gl.getUniformLocation(program, 'uProjectionMatrix');
 			program.uViewMatrix = gl.getUniformLocation(program, 'uViewMatrix');
+			program.uModelMatrix = gl.getUniformLocation(program, 'uModelMatrix');
 			program.uNormalMatrix = gl.getUniformLocation(program, 'uNormalMatrix');
 			program.uPixelSize = gl.getUniformLocation(program, 'uPixelSize');
 			

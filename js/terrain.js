@@ -61,15 +61,10 @@ function editor_init() {
 	
 	// keyboard
 	keys = new Object();
-	
-	// elements
-	elementDepthBuffer = $('#depthbuffer');
-	elementLighting = $('#lighting');
-	elementHeightMap = $('#heightMap');
 }
 
 function update() {
-	f += 0.001;
+	model.ry += 0.01;
 
 	requestAnimationFrame(update);
 	
@@ -82,18 +77,7 @@ function update() {
 
 	// clear buffer
 	gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
-	
-	// depth buffer
-	if (true || elementDepthBuffer.attr('checked')) {
-		gl.enable(gl.DEPTH_TEST);
-	} else {
-		gl.disable(gl.DEPTH_TEST);
-	}
-	
-	// render
-	renderSettings.lighting = $('input[name=lighting]:checked').val();
-	renderSettings.textureMapping = $('input[name=mapping]:checked').val();
-	
+		
 	drawMesh(program, terrain.frontMesh, terrainMaterial, renderSettings, light);
 	drawMesh(program, terrain.backMesh, terrainMaterial, renderSettings, light);
 	drawMesh(program, terrain.leftMesh, terrainMaterial, renderSettings, light);
@@ -101,8 +85,6 @@ function update() {
 	drawMesh(program, terrain.topMesh, terrainMaterial, renderSettings, light);
 	drawMesh(program, terrain.bottomMesh, terrainMaterial, renderSettings, light);
 }
-
-var f = 0.0;
 
 function createTerrain2(width, height, depth) {	
 	var frontMesh = createMesh(gl.TRIANGLES, width*height, 2*2*(width-1)*(height-1));
@@ -262,7 +244,6 @@ function createTerrain2(width, height, depth) {
 // keydown event
 $(window).keydown(function(event) {
 	keys[event.which] = true;
-	console.log(event.which);
 });
 
 // keyup event
@@ -278,7 +259,7 @@ $(window).keyup(function(event) {
 });*/
 
 window.onmousewheel = function(e) {
-	camera.z += e.wheelDelta ? e.wheelDelta : -e.detail;
+	camera.z += typeof (e.wheelDelta) != 'undefined' ? e.wheelDelta : -e.detail;
 	//camera.z = Math.max(0, camera.z);
 };
 
@@ -293,4 +274,26 @@ $(document).ready(function() {
 // window resize events
 $(window).resize(function() {
 	editor_init();
+});
+
+// lighting event listener
+$('input[name=lighting]').change(function() {
+  renderSettings.lighting = $(this).val();
+});
+
+// texture mapping event listener
+$('input[name=mapping]').change(function() {
+  renderSettings.textureMapping = $(this).val();
+});
+
+depthbuffer = true;
+
+// depthbuffer event listener
+$('#depthbuffer').change(function() {
+  depthbuffer = !depthbuffer;
+	if (depthbuffer) {
+		gl.enable(gl.DEPTH_TEST);
+	} else {
+		gl.disable(gl.DEPTH_TEST);
+	}
 });
