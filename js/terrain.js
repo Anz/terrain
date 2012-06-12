@@ -247,23 +247,12 @@ $(window).keyup(function(event) {
 });
 
 // mouse wheel
-/*$(document).bind('mousewheel', function(event, delta) {
-	//camera.zoom += delta*0.0001;
-	var v = event.wheelDelta ? -event.wheelDelta/200 : event.detail/10;
-	console.log(event);
-});*/
+$('#canvas').bind('mousewheel', function(event) {
+	camera.z += event.originalEvent.wheelDelta;
+});
 
-window.onmousewheel = function(e) {
-	camera.z += typeof (e.wheelDelta) != 'undefined' ? e.wheelDelta : -e.detail;
-	//camera.z = Math.max(0, camera.z);
-};
-
-
-// init event
-$(document).ready(function() {
-	canvas = document.getElementById('canvas');
-	editor_init();
-	requestAnimationFrame(update);
+$('#canvas').bind('DOMMouseScroll', function(event) {
+    camera.z += -event.originalEvent.detail*100;
 });
 
 // window resize events
@@ -296,4 +285,11 @@ $('#depthbuffer').change(function() {
 	} else {
 		gl.disable(gl.DEPTH_TEST);
 	}
+});
+
+// init event
+$(document).ready(function() {
+	canvas = document.getElementById('canvas');
+	editor_init();
+	requestAnimationFrame(update);
 });
