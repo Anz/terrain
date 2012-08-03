@@ -1,4 +1,56 @@
-﻿function RenderSettings() {
+﻿function Resource(type, name, src) {
+	this.type = type;
+	this.name = name;
+	this.src = src;
+}
+
+function Renderer() {
+	this.lights = [];
+	this.textures = new Object();
+	this.shaders = new Object();
+	
+	this.TEXTURE = 0;
+	this.SHADER = 1;
+	
+	glTextureInit(this);
+	
+	// load resources
+	this.loadResources = function(resources, callback) {
+		var loaded = 0;
+		var loading = resources.length;
+		var textures = this.textures;
+		var shaders = this.shaders;
+		
+		function inc() {
+			loaded++;
+		
+			if (loaded == loading) {
+				callback();
+			}
+		}
+		
+		for (var i = 0; i < resources.length; i++) {
+			var resource = resources[i];
+			
+			switch (resource.type) {
+				case this.TEXTURE:
+					this.loadTexture(resource.src, resource, function(t, r) {
+						textures[r.name] = t;
+						inc();
+					});
+				break;
+				case this.SHADER:
+					load_shader(resource.src, resource, function(s, r) {
+						shaders[r.name] = s;
+						inc();
+					});
+				break;				
+			}
+		}	
+	}
+}
+
+function RenderSettings() {
 	this.lighting = true;
 	this.textureMapping = 1;
 }
@@ -13,8 +65,19 @@ function Material(ambientColor, shininess, diffuseMap, heightMap) {
 	this.shininess = shininess;
 	this.diffuseMap = diffuseMap;
 	this.heightMap = heightMap;
+	this.useHeightMap = false;
 }
 
+// set frame buffer object
+function glSetFBO(fbo) {
+	gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+	
+	if (fbo != null) {
+		gl.viewport(0, 0, fbo.width, fbo.height);
+	} else {
+		gl.viewport(0, 0, canvas.width, canvas.height);
+	}
+}
 
 function drawMesh(program, mesh, material, renderSettings, light) {
 	if (!program.loaded) {
@@ -62,11 +125,14 @@ function drawMesh(program, mesh, material, renderSettings, light) {
 	// material
 	gl.uniform1f(program.uMaterial.shininess, material.shininess);
 	gl.uniform3fv(program.uMaterial.ambientColor, material.ambientColor);
+	gl.uniform1f(program.uMaterial.useHeightMap, material.useHeightMap);
 	
+	// diffuse map
 	gl.uniform1i(program.uDiffuseMap, 0);
 	gl.activeTexture(gl.TEXTURE0);
 	gl.bindTexture(gl.TEXTURE_2D, material.diffuseMap);
 	
+	// height map
 	gl.uniform1i(program.uHeightMap, 1);
 	gl.activeTexture(gl.TEXTURE0 + 1);
 	gl.bindTexture(gl.TEXTURE_2D, material.heightMap);
@@ -114,117 +180,85 @@ function drawMesh(program, mesh, material, renderSettings, light) {
 	}*/
 }
 
-function load_texture(url){	
-	var texture = gl.createTexture();
-	texture.image = new Image();
-	texture.image.onload = function() {
-		texture.width = texture.image.width;
-		texture.height = texture.image.height;
-	
-		gl.bindTexture(gl.TEXTURE_2D, texture);
-		gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-	}
-
-	texture.image.src = url;
-	
-	return texture;
-}
-
-function createTexture(pixels,width,height) {
-	var data = new Uint8Array(pixels);
-	var texture = gl.createTexture();
-	gl.bindTexture(gl.TEXTURE_2D, texture);
-	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-	texture.width = width;
-	texture.height = height;
-	
-	return texture;
-}
-
-
-function load_shader(vertexURL, fragmentURL) {
+function load_shader(url, data, callback) {
 	var program = gl.createProgram();
 	program.loaded = false;
 	
 	$.ajax({
-	  url: vertexURL,
+	  url: url,
 	  dataType: 'text'
-	}).done(function(vertex) {	
-		$.ajax({
-		  url: fragmentURL,
-		  dataType: 'text'
-		}).done(function(fragment) {
+	}).done(function(source) {	
+		// prepend defines
+		fragment = "#define FS\n\n" + source;
+		vertex = "#define VS\n\n" + source;
+	
+		// compile vertex shader
+		var vertexShader = gl.createShader(gl.VERTEX_SHADER);
+		gl.shaderSource(vertexShader, vertex);
+		gl.compileShader(vertexShader);
 		
-			// compile vertex shader
-			var vertexShader = gl.createShader(gl.VERTEX_SHADER);
-			gl.shaderSource(vertexShader, vertex);
-			gl.compileShader(vertexShader);
-			
-			if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
-				console.log('vertex compiler: ' +  gl.getShaderInfoLog(vertexShader));
-				return;
-			}
-			
-			// compile fragment shader
-			var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-			gl.shaderSource(fragmentShader, fragment);
-			gl.compileShader(fragmentShader);
-			
-			if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
-				console.log('fragment compiler: ' +  gl.getShaderInfoLog(vertexShader));
-				return;
-			}
-			
-			// attach our two shaders to the program
-			gl.attachShader(program, vertexShader);
-			gl.attachShader(program, fragmentShader);
-			
-			// linking
-			gl.linkProgram(program);
-			if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-				console.log('linking: ' + gl.getProgramInfoLog(program));
-				return;
-			}
-			
-			// setup shader
-			gl.useProgram(program);
-			
-			// attributes
-			program.aVertexPosition = gl.getAttribLocation(program, 'aVertexPosition');
-			program.aVertexNormal = gl.getAttribLocation(program, 'aVertexNormal');
-			program.aTextureCoord = gl.getAttribLocation(program, 'aTextureCoord');
-			
-			// uniforms
-			program.uProjectionMatrix = gl.getUniformLocation(program, 'uProjectionMatrix');
-			program.uViewMatrix = gl.getUniformLocation(program, 'uViewMatrix');
-			program.uModelMatrix = gl.getUniformLocation(program, 'uModelMatrix');
-			program.uNormalMatrix = gl.getUniformLocation(program, 'uNormalMatrix');
-			program.uPixelSize = gl.getUniformLocation(program, 'uPixelSize');
-			
-			// render settings
-			program.uRenderSettings = new Object();
-			program.uRenderSettings.lighting = gl.getUniformLocation(program, 'uRenderSettings.lighting');
-			program.uRenderSettings.textureMapping = gl.getUniformLocation(program, 'uRenderSettings.textureMapping');
-			
-			// light
-			program.uLight = new Object();
-			program.uLight.direction = gl.getUniformLocation(program, 'uLight.direction');
-			program.uLight.color = gl.getUniformLocation(program, 'uLight.color');
-			
-			// material
-			program.uMaterial = new Object();
-			program.uMaterial.ambientColor = gl.getUniformLocation(program, 'uMaterial.ambientColor');
-			program.uMaterial.shininess = gl.getUniformLocation(program, 'uMaterial.shininess');
-			program.uDiffuseMap = gl.getUniformLocation(program, 'uDiffuseMap');
-			program.uHeightMap = gl.getUniformLocation(program, 'uHeightMap');
-			
-			program.loaded = true;
-		});
+		if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+			console.log('vertex compiler: ' +  gl.getShaderInfoLog(vertexShader));
+			return;
+		}
+		
+		// compile fragment shader
+		var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+		gl.shaderSource(fragmentShader, fragment);
+		gl.compileShader(fragmentShader);
+		
+		if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
+			console.log('fragment compiler: ' +  gl.getShaderInfoLog(vertexShader));
+			return;
+		}
+		
+		// attach our two shaders to the program
+		gl.attachShader(program, vertexShader);
+		gl.attachShader(program, fragmentShader);
+		
+		// linking
+		gl.linkProgram(program);
+		if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+			console.log('linking: ' + gl.getProgramInfoLog(program));
+			return;
+		}
+		
+		// setup shader
+		gl.useProgram(program);
+		
+		// attributes
+		program.aVertexPosition = gl.getAttribLocation(program, 'aVertexPosition');
+		//program.aVertexNormal = gl.getAttribLocation(program, 'aVertexNormal');
+		program.aTextureCoord = gl.getAttribLocation(program, 'aTextureCoord');
+		
+		// uniforms
+		program.uProjectionMatrix = gl.getUniformLocation(program, 'uProjectionMatrix');
+		program.uViewMatrix = gl.getUniformLocation(program, 'uViewMatrix');
+		program.uModelMatrix = gl.getUniformLocation(program, 'uModelMatrix');
+		program.uNormalMatrix = gl.getUniformLocation(program, 'uNormalMatrix');
+		program.uPixelSize = gl.getUniformLocation(program, 'uPixelSize');
+		
+		// render settings
+		program.uRenderSettings = new Object();
+		program.uRenderSettings.lighting = gl.getUniformLocation(program, 'uRenderSettings.lighting');
+		program.uRenderSettings.textureMapping = gl.getUniformLocation(program, 'uRenderSettings.textureMapping');
+		
+		// light
+		program.uLight = new Object();
+		program.uLight.direction = gl.getUniformLocation(program, 'uLight.direction');
+		program.uLight.color = gl.getUniformLocation(program, 'uLight.color');
+		
+		// material
+		program.uMaterial = new Object();
+		program.uMaterial.ambientColor = gl.getUniformLocation(program, 'uMaterial.ambientColor');
+		program.uMaterial.shininess = gl.getUniformLocation(program, 'uMaterial.shininess');
+		program.uMaterial.useHeightMap = gl.getUniformLocation(program, 'uMaterial.useHeightMap');
+		program.uDiffuseMap = gl.getUniformLocation(program, 'uDiffuseMap');
+		program.uHeightMap = gl.getUniformLocation(program, 'uHeightMap');
+		
+		program.loaded = true;
+		
+		callback(program, data);
 	});
 	
 	return program;
